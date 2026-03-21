@@ -105,6 +105,31 @@ npm run build
 | GET | `/api/scrape/sources` | List available scrapers |
 | POST | `/api/scrape` | Trigger scrape `{ source, url? }` |
 
+## Deploy to Vercel
+
+The project is pre-configured for one-click Vercel deployment:
+
+1. Push the repository to GitHub (already done).
+2. Go to [vercel.com](https://vercel.com), import the repository.
+3. Vercel auto-detects `vercel.json` — no framework or build settings need to be changed.
+4. Click **Deploy**.
+
+Vercel will:
+- Install root dependencies (Express, SQLite, etc.) for the serverless API.
+- Build the React/Vite frontend and serve it as static files.
+- Route every `/api/*` request to the Express serverless function.
+
+> **Note:** SQLite data stored in `/tmp` does not persist across cold-start function invocations on Vercel. This is fine for testing; add a hosted database (e.g. Turso, PlanetScale) for production persistence.
+
+### Environment variables (optional)
+
+Set these in the Vercel project dashboard under *Settings → Environment Variables*:
+
+| Variable | Description |
+|---|---|
+| `TICKETMASTER_API_KEY` | Ticketmaster developer API key |
+| `DB_PATH` | Override the SQLite file path (advanced) |
+
 ## Tests
 
 ```bash
