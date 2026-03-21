@@ -1,0 +1,13 @@
+{
+  "name": "fun-scraper",
+  "version": "1.0.0",
+  "description": "PWA for discovering live events in Vancouver",
+  "private": true,
+  "scripts": {
+    "start:api": "npm --prefix backend start",
+    "start:web": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "test": "npm --prefix backend test",
+    "install:all": "npm --prefix backend install && npm --prefix frontend install"
+  }
+}
