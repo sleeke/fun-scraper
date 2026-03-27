@@ -5,7 +5,7 @@
 const { fetchPage, detectGenre, parsePrice, parseDate } = require('./base');
 
 const SOURCE = 'redroom';
-const DEFAULT_URL = 'https://redroom.ca/events';
+const DEFAULT_URL = 'https://redroomonrichards.com/calendar';
 
 async function scrape(url = DEFAULT_URL) {
   const { $ } = await fetchPage(url);

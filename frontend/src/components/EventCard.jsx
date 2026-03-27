@@ -19,6 +19,9 @@ const SOURCE_LABELS = {
   industrial236: 'Industrial 236',
   residentadvisor: 'Resident Advisor',
   thisisblueprint: 'This Is Blueprint',
+  ticketweb: 'TicketWeb',
+  stubhub: 'StubHub',
+  bandsintown: 'Bandsintown',
   manual: 'Manual',
 };
 
