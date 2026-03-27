@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const SCRAPERS = require('../scrapers');
+const genericScraper = require('../scrapers/generic');
 const { getDb } = require('../db/schema');
 const { lookupArtistGenres, detectGenre } = require('../scrapers/base');
 
@@ -154,6 +155,43 @@ router.post('/', async (req, res) => {
     res.status(502).json({
       error: `Failed to scrape ${source}: ${friendlyMsg}`,
       source,
+      details: err.message,
+    });
+  }
+});
+
+/**
+ * POST /api/scrape/preview
+ * Body: { url: string }
+ * Scrapes a single event URL and returns structured event data without saving to DB.
+ */
+router.post('/preview', async (req, res) => {
+  const { url } = req.body;
+
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return res.status(400).json({ error: 'url is required' });
+  }
+
+  const trimmedUrl = url.trim();
+
+  // Basic URL validation
+  try {
+    new URL(trimmedUrl);
+  } catch {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+
+  try {
+    const event = await genericScraper.scrape(trimmedUrl);
+    res.json(event);
+  } catch (err) {
+    const friendlyMsg = describeError(err);
+    console.error(`[scrape/preview] Error scraping ${trimmedUrl}: ${friendlyMsg}`, {
+      url: trimmedUrl,
+      originalError: err.message,
+    });
+    res.status(502).json({
+      error: `Failed to scrape URL: ${friendlyMsg}`,
       details: err.message,
     });
   }

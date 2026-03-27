@@ -168,6 +168,26 @@ describe('Scrape API', () => {
   });
 });
 
+describe('Scrape Preview API', () => {
+  test('POST /api/scrape/preview - 400 if url missing', async () => {
+    const res = await request(app).post('/api/scrape/preview').send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/url is required/i);
+  });
+
+  test('POST /api/scrape/preview - 400 if url is invalid', async () => {
+    const res = await request(app).post('/api/scrape/preview').send({ url: 'not-a-url' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/invalid url/i);
+  });
+
+  test('POST /api/scrape/preview - 400 if url is empty string', async () => {
+    const res = await request(app).post('/api/scrape/preview').send({ url: '   ' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/url is required/i);
+  });
+});
+
 describe('Events API - participant_names and has_participants', () => {
   let eventId;
 

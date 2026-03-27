@@ -3,6 +3,7 @@ import { api } from './api';
 import EventCard from './components/EventCard';
 import EventDetail from './components/EventDetail';
 import ScrapePanel from './components/ScrapePanel';
+import EventLinkPanel from './components/EventLinkPanel';
 import Toast from './components/Toast';
 import { useToast } from './hooks/useToast';
 
@@ -110,6 +111,7 @@ export default function App() {
 
       <main className="main-content">
         <ScrapePanel onScraped={() => fetchEvents({ page: 1 })} toast={addToast} />
+        <EventLinkPanel toast={addToast} />
 
         {/* Search / Filter Bar */}
         <div className="search-bar">
