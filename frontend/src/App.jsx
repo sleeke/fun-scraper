@@ -7,7 +7,7 @@ import Toast from './components/Toast';
 import { useToast } from './hooks/useToast';
 
 const GENRES = ['', 'electronic', 'hip-hop', 'rock', 'jazz', 'pop', 'classical', 'country', 'reggae', 'latin'];
-const SOURCES = ['', 'blueprint', 'ticketmaster', 'celebrities', 'redroom', 'fortune', 'industrial236', 'residentadvisor', 'thisisblueprint'];
+const SOURCES = ['', 'blueprint', 'ticketmaster', 'celebrities', 'redroom', 'fortune', 'industrial236', 'residentadvisor', 'thisisblueprint', 'ticketweb', 'stubhub', 'bandsintown'];
 const SOURCE_LABELS = {
   '': 'All Sources',
   blueprint: 'Blueprint',
@@ -18,6 +18,9 @@ const SOURCE_LABELS = {
   industrial236: 'Industrial 236',
   residentadvisor: 'Resident Advisor',
   thisisblueprint: 'This Is Blueprint',
+  ticketweb: 'TicketWeb',
+  stubhub: 'StubHub',
+  bandsintown: 'Bandsintown',
 };
 const GENRE_LABELS = { '': 'All Genres', electronic: 'Electronic', 'hip-hop': 'Hip-Hop', rock: 'Rock', jazz: 'Jazz', pop: 'Pop', classical: 'Classical', country: 'Country', reggae: 'Reggae', latin: 'Latin' };
 const PAGE_SIZE = 20;

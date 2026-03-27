@@ -7,13 +7,15 @@ const axios = require('axios');
 const { fetchPage, detectGenre, parseDate } = require('./base');
 
 const SOURCE = 'bandsintown';
-const DEFAULT_URL = 'https://rest.bandsintown.com/events/search';
+const DEFAULT_URL = 'https://www.bandsintown.com/c/vancouver-bc';
+const API_URL = 'https://rest.bandsintown.com/events/search';
+const WEB_BASE_URL = 'https://www.bandsintown.com/c';
 const APP_ID = process.env.BANDSINTOWN_APP_ID || 'fun-scraper';
 
 const LOCATIONS = [
-  { city: 'Vancouver', apiQuery: 'Vancouver,BC', webSlug: 'vancouver--british-columbia' },
-  { city: 'Squamish', apiQuery: 'Squamish,BC', webSlug: 'squamish--british-columbia' },
-  { city: 'Whistler', apiQuery: 'Whistler,BC', webSlug: 'whistler--british-columbia' },
+  { city: 'Vancouver', apiQuery: 'Vancouver,BC', webSlug: 'vancouver-bc' },
+  { city: 'Squamish', apiQuery: 'Squamish,BC', webSlug: 'squamish-bc' },
+  { city: 'Whistler', apiQuery: 'Whistler,BC', webSlug: 'whistler-bc' },
 ];
 
 const BIT_HEADERS = {
@@ -26,8 +28,8 @@ const BIT_HEADERS = {
 /**
  * Fetch events from the Bandsintown REST API for a single location.
  */
-async function fetchViaApi(baseUrl, location) {
-  const response = await axios.get(baseUrl, {
+async function fetchViaApi(location) {
+  const response = await axios.get(API_URL, {
     params: {
       app_id: APP_ID,
       location: location.apiQuery,
@@ -88,7 +90,7 @@ function mapApiEvent(ev, defaultCity) {
  * Scrape a Bandsintown city page via the website (Next.js __NEXT_DATA__ fallback).
  */
 async function fetchViaWeb(location) {
-  const url = `https://www.bandsintown.com/en/c/${location.webSlug}/concerts`;
+  const url = `${WEB_BASE_URL}/${location.webSlug}`;
   const events = [];
 
   try {
@@ -200,7 +202,7 @@ async function scrape(url = DEFAULT_URL) {
   let apiWorked = false;
   for (const location of LOCATIONS) {
     try {
-      const raw = await fetchViaApi(url, location);
+      const raw = await fetchViaApi(location);
       if (Array.isArray(raw) && raw.length > 0) {
         apiWorked = true;
         for (const ev of raw) {

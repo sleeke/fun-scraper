@@ -1,14 +1,14 @@
 /**
  * Scraper for TicketWeb Canada events in Vancouver, Squamish, and Whistler.
- * TicketWeb is owned by Ticketmaster/Live Nation and shares the same Discovery
- * API v2. Queries the API with source=ticketweb for each target city; falls
- * back to scraping the TicketWeb website when no API key is configured.
+ * Scrapes the TicketWeb Canada website as the primary source; also queries the
+ * Ticketmaster Discovery API (source=ticketweb) when TICKETMASTER_API_KEY is set.
  */
 const axios = require('axios');
 const { fetchPage, detectGenre, parsePrice, parseDate } = require('./base');
 
 const SOURCE = 'ticketweb';
-const DEFAULT_URL = 'https://app.ticketmaster.com/discovery/v2/events.json';
+const DEFAULT_URL = 'https://www.ticketweb.ca/events';
+const TM_API_URL = 'https://app.ticketmaster.com/discovery/v2/events.json';
 const TICKETWEB_SITE = 'https://www.ticketweb.ca';
 const API_KEY = process.env.TICKETMASTER_API_KEY || '';
 
@@ -19,7 +19,7 @@ const CITIES = ['Vancouver', 'Squamish', 'Whistler'];
  * Fetch events from the Ticketmaster Discovery API filtered to TicketWeb
  * events for a single city.
  */
-async function fetchViaApi(baseUrl, city) {
+async function fetchViaApi(city) {
   const params = {
     city,
     countryCode: 'CA',
@@ -29,7 +29,7 @@ async function fetchViaApi(baseUrl, city) {
   };
   if (API_KEY) params.apikey = API_KEY;
 
-  const response = await axios.get(baseUrl, { params, timeout: 15000 });
+  const response = await axios.get(TM_API_URL, { params, timeout: 15000 });
   const rawEvents = response.data?._embedded?.events || [];
   return rawEvents;
 }
@@ -90,15 +90,21 @@ function mapApiEvent(ev) {
 }
 
 /**
- * Fall back to scraping the TicketWeb Canada website for a given city.
- * Looks for embedded Next.js / JSON data and falls back to DOM parsing.
+ * Scrape the TicketWeb Canada website for a given city.
+ * Uses the events listing page with a city search query.
+ * Looks for embedded JSON data and falls back to DOM parsing.
  */
-async function fetchViaWeb(city) {
-  const searchUrl = `${TICKETWEB_SITE}/search?q=${encodeURIComponent(city)}&pageNum=1&pageSize=50`;
+async function fetchViaWeb(city, baseUrl) {
+  // For Vancouver use the events listing page (or any custom URL provided by the caller);
+  // for other cities use a city-specific search query.
+  const pageUrl =
+    city === 'Vancouver'
+      ? baseUrl
+      : `${TICKETWEB_SITE}/search?q=${encodeURIComponent(city)}&pageNum=1&pageSize=50`;
   const events = [];
 
   try {
-    const { $, html } = await fetchPage(searchUrl);
+    const { $, html } = await fetchPage(pageUrl);
 
     // Check for embedded JSON (Next.js __NEXT_DATA__ or similar)
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
@@ -217,7 +223,7 @@ async function fetchViaWeb(city) {
       });
     }
   } catch (err) {
-    console.warn(`[ticketweb] Web scrape failed for ${city}:`, err.message);
+    console.warn(`[ticketweb] Web scrape failed for ${city} (${pageUrl}):`, err.message);
   }
 
   return events;
@@ -227,12 +233,12 @@ async function scrape(url = DEFAULT_URL) {
   const allEvents = [];
   const seenIds = new Set();
 
-  // Try Discovery API for each city
+  // Try Discovery API for each city when API key is available
   let apiWorked = false;
   if (API_KEY) {
     for (const city of CITIES) {
       try {
-        const rawEvents = await fetchViaApi(url, city);
+        const rawEvents = await fetchViaApi(city);
         if (rawEvents.length > 0) {
           apiWorked = true;
           for (const ev of rawEvents) {
@@ -252,12 +258,12 @@ async function scrape(url = DEFAULT_URL) {
     }
   }
 
-  // Fall back to website scraping for any city not covered
+  // Scrape website for any city not yet covered by the API
   for (const city of CITIES) {
     const cityAlreadyCovered = apiWorked && allEvents.some((e) => e.city === city);
     if (cityAlreadyCovered) continue;
 
-    const webEvents = await fetchViaWeb(city);
+    const webEvents = await fetchViaWeb(city, url);
     for (const ev of webEvents) {
       if (!ev.source_id || seenIds.has(ev.source_id)) continue;
       seenIds.add(ev.source_id);

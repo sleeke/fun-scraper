@@ -6,14 +6,14 @@
 const { fetchPage, detectGenre, parsePrice, parseDate } = require('./base');
 
 const SOURCE = 'stubhub';
-const DEFAULT_URL = 'https://www.stubhub.ca/concert-tickets/city-vancouver-bc/';
+const DEFAULT_URL = 'https://www.stubhub.ca/secure/Search?q=Vancouver';
 const BASE_URL = 'https://www.stubhub.ca';
 
-// StubHub city listing URLs for the target cities
+// StubHub city search URLs for the target cities
 const CITY_URLS = [
-  { city: 'Vancouver', url: 'https://www.stubhub.ca/concert-tickets/city-vancouver-bc/' },
-  { city: 'Squamish', url: 'https://www.stubhub.ca/concert-tickets/city-squamish-bc/' },
-  { city: 'Whistler', url: 'https://www.stubhub.ca/concert-tickets/city-whistler-bc/' },
+  { city: 'Vancouver', url: 'https://www.stubhub.ca/secure/Search?q=Vancouver' },
+  { city: 'Squamish', url: 'https://www.stubhub.ca/secure/Search?q=Squamish' },
+  { city: 'Whistler', url: 'https://www.stubhub.ca/secure/Search?q=Whistler' },
 ];
 
 /**
