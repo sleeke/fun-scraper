@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
-import { SOURCE_LABELS, GENRE_EMOJI, formatPrice, formatDate } from './EventCard';
+import { SOURCE_LABELS, GENRE_EMOJI, formatPrice, formatDateWithWeekday } from './EventCard';
 
 export default function EventDetail({ event, onClose, onParticipantsChange, toast }) {
   const [participants, setParticipants] = useState(event.participants || []);
@@ -9,7 +9,7 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
 
   const price = formatPrice(event);
   const genreEmoji = GENRE_EMOJI[event.genre] || '🎶';
-  const formattedDate = formatDate(event.date);
+  const formattedDate = formatDateWithWeekday(event.date);
 
   async function handleAddParticipant(e) {
     e.preventDefault();

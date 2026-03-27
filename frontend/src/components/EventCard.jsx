@@ -38,7 +38,7 @@ function formatPrice(event) {
  * Accepts YYYY-MM-DD or any parseable date string.
  * Returns e.g. "Sat, Mar 29, 2025" or the original string if it can't be parsed.
  */
-function formatDate(dateStr) {
+function formatDateWithWeekday(dateStr) {
   if (!dateStr) return null;
   // Try parsing as YYYY-MM-DD first (treat as local date to avoid UTC shift)
   const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -61,10 +61,24 @@ function formatDate(dateStr) {
   });
 }
 
+const MAX_INLINE_PARTICIPANTS = 3;
+
 export default function EventCard({ event, onClick }) {
   const price = formatPrice(event);
   const genreEmoji = GENRE_EMOJI[event.genre] || '🎶';
-  const formattedDate = formatDate(event.date);
+  const formattedDate = formatDateWithWeekday(event.date);
+
+  // Show names inline for small lists; show count for larger ones (names in tooltip)
+  const participantCount = event.participant_count || 0;
+  const participantNames = event.participant_names || '';
+  let participantLabel = '';
+  if (participantCount > 0) {
+    if (participantCount <= MAX_INLINE_PARTICIPANTS && participantNames) {
+      participantLabel = participantNames;
+    } else {
+      participantLabel = `${participantCount} interested`;
+    }
+  }
 
   return (
     <div className="event-card" onClick={() => onClick(event)}>
@@ -89,9 +103,9 @@ export default function EventCard({ event, onClick }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
           {price && <span className="price-badge">{price}</span>}
-          {event.participant_count > 0 && (
-            <span className="participants-count" title={event.participant_names || ''}>
-              👥 {event.participant_names || event.participant_count}
+          {participantCount > 0 && (
+            <span className="participants-count" title={participantNames}>
+              👥 {participantLabel}
             </span>
           )}
         </div>
@@ -100,5 +114,5 @@ export default function EventCard({ event, onClick }) {
   );
 }
 
-export { SOURCE_LABELS, GENRE_EMOJI, formatPrice, formatDate };
+export { SOURCE_LABELS, GENRE_EMOJI, formatPrice, formatDateWithWeekday };
 
