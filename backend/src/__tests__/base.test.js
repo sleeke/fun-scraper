@@ -1,7 +1,7 @@
 /**
- * Tests for base scraper utilities: detectGenre, parsePrice
+ * Tests for base scraper utilities: detectGenre, parsePrice, parseDate
  */
-const { detectGenre, parsePrice } = require('../scrapers/base');
+const { detectGenre, parsePrice, parseDate } = require('../scrapers/base');
 
 describe('detectGenre', () => {
   test('detects electronic from "techno rave"', () => {
@@ -71,5 +71,40 @@ describe('parsePrice', () => {
     const result = parsePrice('$15 / $25');
     expect(result.priceMin).toBe(15);
     expect(result.priceMax).toBe(25);
+  });
+});
+
+describe('parseDate', () => {
+  test('returns YYYY-MM-DD unchanged', () => {
+    expect(parseDate('2025-03-29')).toBe('2025-03-29');
+  });
+
+  test('extracts date from ISO datetime string', () => {
+    expect(parseDate('2025-03-29T20:00:00')).toBe('2025-03-29');
+  });
+
+  test('extracts date from ISO datetime with space', () => {
+    expect(parseDate('2025-03-29 20:00:00')).toBe('2025-03-29');
+  });
+
+  test('parses human-readable date string', () => {
+    expect(parseDate('March 29, 2025')).toBe('2025-03-29');
+  });
+
+  test('parses abbreviated month string', () => {
+    expect(parseDate('Mar 29, 2025')).toBe('2025-03-29');
+  });
+
+  test('returns null for null input', () => {
+    expect(parseDate(null)).toBeNull();
+  });
+
+  test('returns null for empty string', () => {
+    expect(parseDate('')).toBeNull();
+  });
+
+  test('returns null for month-only text that cannot be parsed', () => {
+    // "Mar" alone cannot produce a valid date
+    expect(parseDate('Mar')).toBeNull();
   });
 });

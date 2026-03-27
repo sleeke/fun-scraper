@@ -153,6 +153,8 @@ describe('Scrape API', () => {
     expect(keys).toContain('redroom');
     expect(keys).toContain('fortune');
     expect(keys).toContain('industrial236');
+    expect(keys).toContain('residentadvisor');
+    expect(keys).toContain('thisisblueprint');
   });
 
   test('POST /api/scrape - 400 if source missing', async () => {
@@ -163,5 +165,54 @@ describe('Scrape API', () => {
   test('POST /api/scrape - 404 for unknown source', async () => {
     const res = await request(app).post('/api/scrape').send({ source: 'nonexistent' });
     expect(res.status).toBe(404);
+  });
+});
+
+describe('Events API - participant_names and has_participants', () => {
+  let eventId;
+
+  beforeAll(async () => {
+    const res = await request(app).post('/api/events').send({
+      title: 'Interest Filter Test Event',
+      venue: 'Test Venue',
+      date: '2025-12-25',
+    });
+    eventId = res.body.id;
+    // Add a participant
+    await request(app)
+      .post(`/api/events/${eventId}/participants`)
+      .send({ name: 'TestUser' });
+  });
+
+  test('GET /api/events - includes participant_names field', async () => {
+    const res = await request(app).get(`/api/events?search=Interest+Filter+Test`);
+    expect(res.status).toBe(200);
+    const ev = res.body.events.find((e) => e.id === eventId);
+    expect(ev).toBeDefined();
+    expect(ev.participant_count).toBe(1);
+    expect(ev.participant_names).toBe('TestUser');
+  });
+
+  test('GET /api/events?has_participants=true - only returns events with participants', async () => {
+    const res = await request(app).get('/api/events?has_participants=true');
+    expect(res.status).toBe(200);
+    expect(res.body.events.length).toBeGreaterThan(0);
+    for (const ev of res.body.events) {
+      expect(ev.participant_count).toBeGreaterThan(0);
+    }
+  });
+
+  test('GET /api/events - events without participants have null participant_names', async () => {
+    // Create an event with no participants
+    const create = await request(app).post('/api/events').send({
+      title: 'No Participants Event',
+      venue: 'Empty Venue',
+    });
+    const res = await request(app).get(`/api/events?search=No+Participants+Event`);
+    expect(res.status).toBe(200);
+    const ev = res.body.events.find((e) => e.id === create.body.id);
+    expect(ev).toBeDefined();
+    expect(ev.participant_count).toBe(0);
+    expect(ev.participant_names == null).toBe(true);
   });
 });

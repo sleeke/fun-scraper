@@ -8,25 +8,29 @@ const SOURCE_LABELS = {
   redroom: 'Red Room',
   fortune: 'Fortune Sound',
   industrial236: 'Industrial 236',
+  residentadvisor: 'Resident Advisor',
+  thisisblueprint: 'This Is Blueprint',
 };
 
 export default function ScrapePanel({ onScraped, toast }) {
   const [loading, setLoading] = useState({});
-  const [status, setStatus] = useState(null);
+  const [results, setResults] = useState({});
 
   async function handleScrape(source) {
     setLoading((prev) => ({ ...prev, [source]: true }));
-    setStatus({ type: 'info', message: `Scraping ${SOURCE_LABELS[source] || source}…` });
+    setResults((prev) => ({ ...prev, [source]: { type: 'info', message: 'Scraping…' } }));
     try {
       const result = await api.scrape(source);
-      const msg = `✅ ${SOURCE_LABELS[source]}: found ${result.scraped} events (${result.inserted ?? 0} new)`;
-      setStatus({ type: 'success', message: msg });
-      toast(msg, 'success');
+      const msg = `✅ Found ${result.scraped} events (${result.inserted ?? 0} new)`;
+      console.log(`[scrape] ${SOURCE_LABELS[source]}:`, result);
+      setResults((prev) => ({ ...prev, [source]: { type: 'success', message: msg } }));
+      toast(`✅ ${SOURCE_LABELS[source]}: ${msg.replace('✅ ', '')}`, 'success');
       onScraped && onScraped();
     } catch (err) {
-      const msg = `❌ ${SOURCE_LABELS[source]}: ${err.message}`;
-      setStatus({ type: 'error', message: msg });
-      toast(msg, 'error');
+      const msg = err.message || 'Unknown error';
+      console.error(`[scrape] ${SOURCE_LABELS[source]} failed:`, msg);
+      setResults((prev) => ({ ...prev, [source]: { type: 'error', message: `❌ ${msg}` } }));
+      toast(`❌ ${SOURCE_LABELS[source]}: ${msg}`, 'error');
     } finally {
       setLoading((prev) => ({ ...prev, [source]: false }));
     }
@@ -38,21 +42,34 @@ export default function ScrapePanel({ onScraped, toast }) {
     <div className="scrape-panel">
       <h3>Scrape Events</h3>
       <div className="scrape-sources">
-        {Object.entries(SOURCE_LABELS).map(([key, label]) => (
-          <button
-            key={key}
-            className="scrape-btn"
-            onClick={() => handleScrape(key)}
-            disabled={loading[key] || anyLoading}
-          >
-            {loading[key] ? <span className="spinner" style={{ width: 12, height: 12 }} /> : null}
-            {label}
-          </button>
-        ))}
+        {Object.entries(SOURCE_LABELS).map(([key, label]) => {
+          const result = results[key];
+          const statusClass =
+            result?.type === 'success'
+              ? 'success'
+              : result?.type === 'error'
+              ? 'error'
+              : '';
+          const tooltip =
+            result?.type === 'error'
+              ? result.message.replace(/^❌ /, '')
+              : result?.type === 'success'
+              ? result.message.replace(/^✅ /, '')
+              : undefined;
+          return (
+            <button
+              key={key}
+              className={`scrape-btn${statusClass ? ` ${statusClass}` : ''}`}
+              onClick={() => handleScrape(key)}
+              disabled={loading[key] || anyLoading}
+              title={tooltip}
+            >
+              {loading[key] ? <span className="spinner" style={{ width: 12, height: 12 }} /> : null}
+              {label}
+            </button>
+          );
+        })}
       </div>
-      {status && (
-        <div className={`scrape-status ${status.type}`}>{status.message}</div>
-      )}
     </div>
   );
 }

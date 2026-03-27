@@ -7,8 +7,18 @@ import Toast from './components/Toast';
 import { useToast } from './hooks/useToast';
 
 const GENRES = ['', 'electronic', 'hip-hop', 'rock', 'jazz', 'pop', 'classical', 'country', 'reggae', 'latin'];
-const SOURCES = ['', 'blueprint', 'ticketmaster', 'celebrities', 'redroom', 'fortune', 'industrial236'];
-const SOURCE_LABELS = { '': 'All Sources', blueprint: 'Blueprint', ticketmaster: 'Ticketmaster', celebrities: 'Celebrities', redroom: 'Red Room', fortune: 'Fortune Sound', industrial236: 'Industrial 236' };
+const SOURCES = ['', 'blueprint', 'ticketmaster', 'celebrities', 'redroom', 'fortune', 'industrial236', 'residentadvisor', 'thisisblueprint'];
+const SOURCE_LABELS = {
+  '': 'All Sources',
+  blueprint: 'Blueprint',
+  ticketmaster: 'Ticketmaster',
+  celebrities: 'Celebrities',
+  redroom: 'Red Room',
+  fortune: 'Fortune Sound',
+  industrial236: 'Industrial 236',
+  residentadvisor: 'Resident Advisor',
+  thisisblueprint: 'This Is Blueprint',
+};
 const GENRE_LABELS = { '': 'All Genres', electronic: 'Electronic', 'hip-hop': 'Hip-Hop', rock: 'Rock', jazz: 'Jazz', pop: 'Pop', classical: 'Classical', country: 'Country', reggae: 'Reggae', latin: 'Latin' };
 const PAGE_SIZE = 20;
 
@@ -20,6 +30,7 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [genre, setGenre] = useState('');
   const [source, setSource] = useState('');
+  const [interestedOnly, setInterestedOnly] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const { toasts, addToast } = useToast();
   const searchTimer = useRef(null);
@@ -34,6 +45,7 @@ export default function App() {
           source: opts.source ?? source,
           page: opts.page ?? page,
           limit: PAGE_SIZE,
+          ...(((opts.interestedOnly ?? interestedOnly)) ? { has_participants: 'true' } : {}),
         };
         const data = await api.getEvents(params);
         setEvents(data.events);
@@ -44,7 +56,7 @@ export default function App() {
         setLoading(false);
       }
     },
-    [search, genre, source, page, addToast]
+    [search, genre, source, page, interestedOnly, addToast]
   );
 
   // Initial load
@@ -58,11 +70,11 @@ export default function App() {
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => {
       setPage(1);
-      fetchEvents({ page: 1, search, genre, source });
+      fetchEvents({ page: 1, search, genre, source, interestedOnly });
     }, 300);
     return () => clearTimeout(searchTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, genre, source]);
+  }, [search, genre, source, interestedOnly]);
 
   // Re-fetch on page change
   useEffect(() => {
@@ -117,6 +129,13 @@ export default function App() {
               <option key={s} value={s}>{SOURCE_LABELS[s] || s}</option>
             ))}
           </select>
+          <button
+            className={`btn ${interestedOnly ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => { setInterestedOnly((v) => !v); setPage(1); }}
+            title="Show only events with interested users"
+          >
+            👥 Interested
+          </button>
         </div>
 
         {/* Events Header */}

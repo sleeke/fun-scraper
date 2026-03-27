@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
-import { SOURCE_LABELS, GENRE_EMOJI, formatPrice } from './EventCard';
+import { SOURCE_LABELS, GENRE_EMOJI, formatPrice, formatDateWithWeekday } from './EventCard';
 
 export default function EventDetail({ event, onClose, onParticipantsChange, toast }) {
   const [participants, setParticipants] = useState(event.participants || []);
@@ -8,7 +8,15 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
   const [adding, setAdding] = useState(false);
 
   const price = formatPrice(event);
-  const genreEmoji = GENRE_EMOJI[event.genre] || '🎶';
+  // Support multiple genres from MusicBrainz (genres field) or fall back to genre
+  const genreList = event.genres
+    ? event.genres.split(',').map((g) => g.trim()).filter(Boolean)
+    : event.genre
+    ? [event.genre]
+    : [];
+  const primaryGenre = genreList[0] || null;
+  const genreEmoji = GENRE_EMOJI[primaryGenre] || '🎶';
+  const formattedDate = formatDateWithWeekday(event.date);
 
   async function handleAddParticipant(e) {
     e.preventDefault();
@@ -60,10 +68,10 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
               <label>City</label>
               <span>{event.city || 'Vancouver'}</span>
             </div>
-            {event.date && (
+            {(formattedDate || event.date) && (
               <div className="modal-field">
                 <label>Date</label>
-                <span>📅 {event.date}{event.time ? ` at ${event.time}` : ''}</span>
+                <span>📅 {formattedDate || event.date}{event.time ? ` at ${event.time}` : ''}</span>
               </div>
             )}
             {event.artist && event.artist !== event.title && (
@@ -78,10 +86,16 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
                 <span className="price-badge">{price}</span>
               </div>
             )}
-            {event.genre && (
+            {genreList.length > 0 && (
               <div className="modal-field">
                 <label>Genre</label>
-                <span className="genre-badge">{genreEmoji} {event.genre}</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {genreList.map((g) => (
+                    <span key={g} className="genre-badge">
+                      {GENRE_EMOJI[g] || '🎶'} {g}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
             <div className="modal-field">

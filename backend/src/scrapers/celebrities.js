@@ -2,7 +2,7 @@
  * Scraper for Celebrities Night Club Vancouver
  * https://www.celebritiesnightclub.com/events
  */
-const { fetchPage, detectGenre, parsePrice } = require('./base');
+const { fetchPage, detectGenre, parsePrice, parseDate } = require('./base');
 
 const SOURCE = 'celebrities';
 const DEFAULT_URL = 'https://www.celebritiesnightclub.com/events';
@@ -65,6 +65,41 @@ async function scrape(url = DEFAULT_URL) {
   return events;
 }
 
+/**
+ * Extract a normalized date from an event element.
+ * Prioritises the HTML `datetime` attribute on <time> tags (most reliable),
+ * then tries Squarespace month+day components, then falls back to text content.
+ */
+function extractEventDate($el) {
+  // 1. <time datetime="YYYY-MM-DD"> or <time datetime="YYYY-MM-DDTHH:mm">
+  const timeEl = $el.find('time').first();
+  if (timeEl.length) {
+    const dt = timeEl.attr('datetime');
+    if (dt) {
+      const parsed = parseDate(dt);
+      if (parsed) return parsed;
+    }
+  }
+
+  // 2. Squarespace: separate month + day elements
+  const month = $el.find('.eventlist-datetag-month').first().text().trim();
+  const day = $el.find('.eventlist-datetag-day').first().text().trim();
+  if (month && day) {
+    // Squarespace doesn't embed the year in these elements; guess current/next year
+    const year = new Date().getFullYear();
+    const parsed = parseDate(`${month} ${day}, ${year}`);
+    if (parsed) return parsed;
+  }
+
+  // 3. Fall back to text content of date-related elements
+  const dateText = $el
+    .find('time, .event-date, .eventlist-datetag-startdate, .summary-metadata--primary')
+    .first()
+    .text()
+    .trim();
+  return parseDate(dateText);
+}
+
 function extractEvent($, el, source) {
   const $el = $(el);
   const title = $el.find('h1, h2, h3, .event-title, .eventlist-title, .summary-title').first().text().trim();
@@ -75,7 +110,7 @@ function extractEvent($, el, source) {
     $el.find('a').first().attr('href') ||
     null;
 
-  const dateText = $el.find('time, .event-date, .eventlist-datetag-startdate, .summary-metadata--primary').first().text().trim();
+  const date = extractEventDate($el);
   const priceText = $el.find('.event-price, .price, .ticket-price').first().text().trim();
   const { priceMin, priceMax, priceText: normalizedPrice } = parsePrice(priceText);
   const description = $el.find('.event-description, .eventlist-description, .summary-excerpt, p').first().text().trim();
@@ -89,7 +124,7 @@ function extractEvent($, el, source) {
     artist: title,
     venue: 'Celebrities Night Club',
     city: 'Vancouver',
-    date: dateText || null,
+    date,
     price_min: priceMin,
     price_max: priceMax,
     price_text: normalizedPrice,
