@@ -17,6 +17,8 @@ const SOURCE_LABELS = {
   redroom: 'Red Room',
   fortune: 'Fortune Sound',
   industrial236: 'Industrial 236',
+  residentadvisor: 'Resident Advisor',
+  thisisblueprint: 'This Is Blueprint',
   manual: 'Manual',
 };
 
@@ -31,9 +33,38 @@ function formatPrice(event) {
   return null;
 }
 
+/**
+ * Format a date string to include the day of week.
+ * Accepts YYYY-MM-DD or any parseable date string.
+ * Returns e.g. "Sat, Mar 29, 2025" or the original string if it can't be parsed.
+ */
+function formatDate(dateStr) {
+  if (!dateStr) return null;
+  // Try parsing as YYYY-MM-DD first (treat as local date to avoid UTC shift)
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  let d;
+  if (isoMatch) {
+    d = new Date(
+      parseInt(isoMatch[1], 10),
+      parseInt(isoMatch[2], 10) - 1,
+      parseInt(isoMatch[3], 10)
+    );
+  } else {
+    d = new Date(dateStr);
+  }
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-CA', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 export default function EventCard({ event, onClick }) {
   const price = formatPrice(event);
   const genreEmoji = GENRE_EMOJI[event.genre] || '🎶';
+  const formattedDate = formatDate(event.date);
 
   return (
     <div className="event-card" onClick={() => onClick(event)}>
@@ -46,7 +77,7 @@ export default function EventCard({ event, onClick }) {
         <div className="event-card-title">{event.title}</div>
         <div className="event-card-meta">
           {event.venue && <span>📍 {event.venue}</span>}
-          {event.date && <span>📅 {event.date}{event.time ? ` · ${event.time}` : ''}</span>}
+          {formattedDate && <span>📅 {formattedDate}{event.time ? ` · ${event.time}` : ''}</span>}
           {event.artist && event.artist !== event.title && (
             <span>🎤 {event.artist}</span>
           )}
@@ -58,13 +89,16 @@ export default function EventCard({ event, onClick }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
           {price && <span className="price-badge">{price}</span>}
-          <span className="participants-count">
-            {event.participant_count > 0 ? `👥 ${event.participant_count}` : ''}
-          </span>
+          {event.participant_count > 0 && (
+            <span className="participants-count" title={event.participant_names || ''}>
+              👥 {event.participant_names || event.participant_count}
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-export { SOURCE_LABELS, GENRE_EMOJI, formatPrice };
+export { SOURCE_LABELS, GENRE_EMOJI, formatPrice, formatDate };
+

@@ -4,7 +4,7 @@ const { getDb } = require('../db/schema');
 
 /**
  * GET /api/events
- * Query params: search, venue, genre, source, date, page, limit
+ * Query params: search, venue, genre, source, date, page, limit, has_participants
  */
 router.get('/', (req, res) => {
   const db = getDb();
@@ -16,6 +16,7 @@ router.get('/', (req, res) => {
     date = '',
     page = 1,
     limit = 20,
+    has_participants = '',
   } = req.query;
 
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
@@ -46,6 +47,9 @@ router.get('/', (req, res) => {
     where.push('e.date = ?');
     params.push(date);
   }
+  if (has_participants === 'true' || has_participants === '1') {
+    where.push('(SELECT COUNT(*) FROM participants p WHERE p.event_id = e.id) > 0');
+  }
 
   const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
@@ -56,7 +60,8 @@ router.get('/', (req, res) => {
   const events = db
     .prepare(
       `SELECT e.*,
-        (SELECT COUNT(*) FROM participants p WHERE p.event_id = e.id) AS participant_count
+        (SELECT COUNT(*) FROM participants p WHERE p.event_id = e.id) AS participant_count,
+        (SELECT GROUP_CONCAT(p.name, ', ') FROM participants p WHERE p.event_id = e.id ORDER BY p.added_at ASC) AS participant_names
        FROM events e
        ${whereClause}
        ORDER BY e.date ASC, e.id DESC

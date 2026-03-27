@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
-import { SOURCE_LABELS, GENRE_EMOJI, formatPrice } from './EventCard';
+import { SOURCE_LABELS, GENRE_EMOJI, formatPrice, formatDate } from './EventCard';
 
 export default function EventDetail({ event, onClose, onParticipantsChange, toast }) {
   const [participants, setParticipants] = useState(event.participants || []);
@@ -9,6 +9,7 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
 
   const price = formatPrice(event);
   const genreEmoji = GENRE_EMOJI[event.genre] || '🎶';
+  const formattedDate = formatDate(event.date);
 
   async function handleAddParticipant(e) {
     e.preventDefault();
@@ -60,10 +61,10 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
               <label>City</label>
               <span>{event.city || 'Vancouver'}</span>
             </div>
-            {event.date && (
+            {(formattedDate || event.date) && (
               <div className="modal-field">
                 <label>Date</label>
-                <span>📅 {event.date}{event.time ? ` at ${event.time}` : ''}</span>
+                <span>📅 {formattedDate || event.date}{event.time ? ` at ${event.time}` : ''}</span>
               </div>
             )}
             {event.artist && event.artist !== event.title && (

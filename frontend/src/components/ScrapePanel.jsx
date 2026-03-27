@@ -8,6 +8,8 @@ const SOURCE_LABELS = {
   redroom: 'Red Room',
   fortune: 'Fortune Sound',
   industrial236: 'Industrial 236',
+  residentadvisor: 'Resident Advisor',
+  thisisblueprint: 'This Is Blueprint',
 };
 
 export default function ScrapePanel({ onScraped, toast }) {
