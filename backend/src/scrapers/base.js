@@ -74,4 +74,110 @@ function parsePrice(text) {
   };
 }
 
-module.exports = { fetchPage, detectGenre, parsePrice };
+/**
+ * Parse a date string and normalize to YYYY-MM-DD where possible.
+ * Handles: ISO datetimes, Squarespace "datetime" attributes, human-readable strings.
+ * @param {string} text
+ * @returns {string|null} YYYY-MM-DD or null
+ */
+function parseDate(text) {
+  if (!text) return null;
+  const clean = text.trim();
+  if (!clean) return null;
+
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+
+  // ISO datetime — extract date part
+  if (/^\d{4}-\d{2}-\d{2}[T ]/.test(clean)) return clean.slice(0, 10);
+
+  // Try Date.parse (handles many human-readable formats)
+  const d = new Date(clean);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    // Sanity-check year
+    if (y >= 2020 && y <= 2035) {
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// MusicBrainz artist genre lookup
+// ---------------------------------------------------------------------------
+const MB_RATE_LIMIT_MS = 1200; // 1 request per second; give a little extra headroom
+let _lastMbRequest = 0;
+const _artistGenreCache = new Map();
+
+/**
+ * Look up artist genres from MusicBrainz (free API, no auth required).
+ * Returns up to 3 genre strings, or an empty array if not found / on error.
+ * Results are cached for the lifetime of the process.
+ *
+ * @param {string} artistName
+ * @returns {Promise<string[]>}
+ */
+async function lookupArtistGenres(artistName) {
+  if (!artistName || artistName.trim().length < 2) return [];
+
+  const key = artistName.toLowerCase().trim();
+  if (_artistGenreCache.has(key)) return _artistGenreCache.get(key);
+
+  // Enforce rate limiting
+  const now = Date.now();
+  const wait = MB_RATE_LIMIT_MS - (now - _lastMbRequest);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  _lastMbRequest = Date.now();
+
+  try {
+    const response = await axios.get('https://musicbrainz.org/ws/2/artist/', {
+      params: {
+        query: `artist:"${artistName}"`,
+        fmt: 'json',
+        limit: 3,
+      },
+      headers: {
+        'User-Agent': 'fun-scraper/1.0.0 (https://github.com/sleeke/fun-scraper)',
+        Accept: 'application/json',
+      },
+      timeout: 8000,
+    });
+
+    const artists = response.data?.artists || [];
+    if (artists.length === 0) {
+      _artistGenreCache.set(key, []);
+      return [];
+    }
+
+    // Prefer exact name match, fall back to first result
+    const artist =
+      artists.find((a) => a.name.toLowerCase() === key) || artists[0];
+
+    // Use community-curated genres first, then fall back to tags
+    const genres = (artist.genres || [])
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3)
+      .map((g) => g.name);
+
+    if (genres.length === 0) {
+      const tagGenres = (artist.tags || [])
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3)
+        .map((t) => t.name);
+      genres.push(...tagGenres);
+    }
+
+    _artistGenreCache.set(key, genres);
+    return genres;
+  } catch (err) {
+    console.warn(`[musicbrainz] Genre lookup failed for "${artistName}":`, err.message);
+    _artistGenreCache.set(key, []);
+    return [];
+  }
+}
+
+module.exports = { fetchPage, detectGenre, parsePrice, parseDate, lookupArtistGenres };

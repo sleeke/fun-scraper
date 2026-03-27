@@ -87,6 +87,23 @@ a:hover { text-decoration: underline; }
   flex-wrap: wrap;
   gap: 8px;
 }
+.scrape-source-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.scrape-source-status {
+  font-size: 0.75rem;
+  padding-left: 4px;
+}
+.scrape-error-detail {
+  font-size: 0.75rem;
+  color: var(--accent);
+  max-width: 180px;
+  word-break: break-word;
+  padding-left: 4px;
+}
 .scrape-btn {
   background: var(--accent2);
   color: var(--text);

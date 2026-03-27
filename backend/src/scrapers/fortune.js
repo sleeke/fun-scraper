@@ -2,7 +2,7 @@
  * Scraper for Fortune Sound Club Vancouver
  * https://www.fortunesoundclub.com/events
  */
-const { fetchPage, detectGenre, parsePrice } = require('./base');
+const { fetchPage, detectGenre, parsePrice, parseDate } = require('./base');
 
 const SOURCE = 'fortune';
 const DEFAULT_URL = 'https://www.fortunesoundclub.com/events';
@@ -43,7 +43,14 @@ function extractEvent($, el) {
     $el.find('a').first().attr('href') ||
     null;
 
-  const dateText = $el.find('time, .event-date, .tribe-event-date-start').first().text().trim();
+  // Prefer datetime attribute on <time> elements; fall back to text
+  const timeEl = $el.find('time').first();
+  const dateRaw =
+    (timeEl.length && timeEl.attr('datetime')) ||
+    $el.find('time, .event-date, .tribe-event-date-start').first().text().trim() ||
+    null;
+  const date = parseDate(dateRaw);
+
   const priceText = $el.find('.tribe-tickets__sale_price, .event-price, .price').first().text().trim();
   const { priceMin, priceMax, priceText: normalizedPrice } = parsePrice(priceText);
   const description = $el.find('.tribe-events-calendar-list__event-description, .event-description, p').first().text().trim();
@@ -57,7 +64,7 @@ function extractEvent($, el) {
     artist: title,
     venue: 'Fortune Sound Club',
     city: 'Vancouver',
-    date: dateText || null,
+    date,
     price_min: priceMin,
     price_max: priceMax,
     price_text: normalizedPrice,

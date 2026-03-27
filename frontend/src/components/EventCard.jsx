@@ -65,7 +65,15 @@ const MAX_INLINE_PARTICIPANTS = 3;
 
 export default function EventCard({ event, onClick }) {
   const price = formatPrice(event);
-  const genreEmoji = GENRE_EMOJI[event.genre] || '🎶';
+
+  // Support multiple genres: prefer the `genres` field (MusicBrainz), fall back to `genre`
+  const genreList = event.genres
+    ? event.genres.split(',').map((g) => g.trim()).filter(Boolean)
+    : event.genre
+    ? [event.genre]
+    : [];
+  const primaryGenre = genreList[0] || null;
+  const genreEmoji = GENRE_EMOJI[primaryGenre] || '🎶';
   const formattedDate = formatDateWithWeekday(event.date);
 
   // Show names inline for small lists; show count for larger ones (names in tooltip)
@@ -98,8 +106,12 @@ export default function EventCard({ event, onClick }) {
         </div>
       </div>
       <div className="event-card-footer">
-        <div>
-          {event.genre && <span className="genre-badge">{genreEmoji} {event.genre}</span>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {genreList.map((g) => (
+            <span key={g} className="genre-badge">
+              {GENRE_EMOJI[g] || '🎶'} {g}
+            </span>
+          ))}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
           {price && <span className="price-badge">{price}</span>}

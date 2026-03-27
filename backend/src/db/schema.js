@@ -32,6 +32,7 @@ function initSchema(db) {
       price_max REAL,
       price_text TEXT,
       genre TEXT,
+      genres TEXT,
       ticket_url TEXT,
       image_url TEXT,
       description TEXT,
@@ -52,6 +53,12 @@ function initSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_events_genre ON events(genre);
     CREATE INDEX IF NOT EXISTS idx_events_source ON events(source);
   `);
+
+  // Migrate: add genres column to existing databases that don't have it yet
+  const cols = db.prepare("PRAGMA table_info(events)").all().map((c) => c.name);
+  if (!cols.includes('genres')) {
+    db.exec('ALTER TABLE events ADD COLUMN genres TEXT');
+  }
 }
 
 function closeDb() {

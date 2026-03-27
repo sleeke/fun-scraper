@@ -36,8 +36,11 @@ router.get('/', (req, res) => {
     params.push(`%${venue}%`);
   }
   if (genre) {
-    where.push('e.genre = ?');
-    params.push(genre);
+    // Support comma-separated genres: match if genre is the primary genre OR appears in genres list
+    where.push(
+      "(e.genre = ? OR (',' || LOWER(COALESCE(e.genres,'')) || ',') LIKE ('%,' || LOWER(?) || ',%'))"
+    );
+    params.push(genre, genre);
   }
   if (source) {
     where.push('e.source = ?');
@@ -64,7 +67,10 @@ router.get('/', (req, res) => {
         (SELECT GROUP_CONCAT(p.name, ', ') FROM participants p WHERE p.event_id = e.id ORDER BY p.added_at ASC) AS participant_names
        FROM events e
        ${whereClause}
-       ORDER BY e.date ASC, e.id DESC
+       ORDER BY
+         CASE WHEN e.date IS NULL OR e.date = '' THEN 1 ELSE 0 END ASC,
+         e.date ASC,
+         e.id DESC
        LIMIT ? OFFSET ?`
     )
     .all(...params, limitNum, offset);
