@@ -44,29 +44,29 @@ export default function ScrapePanel({ onScraped, toast }) {
       <div className="scrape-sources">
         {Object.entries(SOURCE_LABELS).map(([key, label]) => {
           const result = results[key];
+          const statusClass =
+            result?.type === 'success'
+              ? 'success'
+              : result?.type === 'error'
+              ? 'error'
+              : '';
+          const tooltip =
+            result?.type === 'error'
+              ? result.message.replace(/^❌ /, '')
+              : result?.type === 'success'
+              ? result.message.replace(/^✅ /, '')
+              : undefined;
           return (
-            <div key={key} className="scrape-source-item">
-              <button
-                className="scrape-btn"
-                onClick={() => handleScrape(key)}
-                disabled={loading[key] || anyLoading}
-                title={result?.type === 'error' ? result.message : undefined}
-              >
-                {loading[key] ? <span className="spinner" style={{ width: 12, height: 12 }} /> : null}
-                {label}
-              </button>
-              {result && (
-                <span
-                  className={`scrape-source-status ${result.type}`}
-                  title={result.message}
-                >
-                  {result.type === 'success' ? '✅' : result.type === 'error' ? '❌' : '⏳'}
-                </span>
-              )}
-              {result?.type === 'error' && (
-                <span className="scrape-error-detail">{result.message}</span>
-              )}
-            </div>
+            <button
+              key={key}
+              className={`scrape-btn${statusClass ? ` ${statusClass}` : ''}`}
+              onClick={() => handleScrape(key)}
+              disabled={loading[key] || anyLoading}
+              title={tooltip}
+            >
+              {loading[key] ? <span className="spinner" style={{ width: 12, height: 12 }} /> : null}
+              {label}
+            </button>
           );
         })}
       </div>
