@@ -155,6 +155,9 @@ describe('Scrape API', () => {
     expect(keys).toContain('industrial236');
     expect(keys).toContain('residentadvisor');
     expect(keys).toContain('thisisblueprint');
+    expect(keys).toContain('ticketweb');
+    expect(keys).toContain('stubhub');
+    expect(keys).toContain('bandsintown');
   });
 
   test('POST /api/scrape - 400 if source missing', async () => {
