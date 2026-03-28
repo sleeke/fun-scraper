@@ -3,7 +3,7 @@ const router = express.Router();
 const SCRAPERS = require('../scrapers');
 const { getDb } = require('../db/schema');
 const { lookupArtistGenres, detectGenre } = require('../scrapers/base');
-const { saveEventsToBlob } = require('../db/blobSync');
+const { saveEventsToBlob, prunePastEvents } = require('../db/blobSync');
 
 /**
  * Enrich events with MusicBrainz genres for artists that don't yet have
@@ -144,6 +144,8 @@ router.post('/', async (req, res) => {
     });
 
     const result = upsertMany(events);
+    // Remove past events from the live DB so stale results never appear.
+    prunePastEvents(db);
     // Fire-and-forget: sync events to Vercel Blob in the background.
     // Failures are logged but do not affect the scrape response.
     saveEventsToBlob(db).catch((err) =>

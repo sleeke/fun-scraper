@@ -6,7 +6,37 @@ const axios = require('axios');
 const BLOB_PATHNAME = 'events/all.json';
 
 /**
- * Serialise all events from SQLite and upload to Vercel Blob.
+ * Return today's date as a YYYY-MM-DD string in local time.
+ * Events whose `date` field is before this value are considered past.
+ */
+function todayStr() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+/**
+ * Delete all events from SQLite whose date is strictly before today.
+ * Events with a null date are not deleted (date unknown = keep them).
+ *
+ * @param {import('better-sqlite3').Database} db
+ * @returns {number} number of rows deleted
+ */
+function prunePastEvents(db) {
+  const today = todayStr();
+  const result = db.prepare(
+    "DELETE FROM events WHERE date IS NOT NULL AND date < ?"
+  ).run(today);
+  if (result.changes > 0) {
+    console.log(`[blobSync] Pruned ${result.changes} past events (before ${today})`);
+  }
+  return result.changes;
+}
+
+/**
+ * Serialise future/current events from SQLite and upload to Vercel Blob.
+ * Past events (date < today) are excluded from the upload.
  * No-op if BLOB_READ_WRITE_TOKEN is not configured.
  * Errors are caught and logged so the scrape response is never affected.
  *
@@ -18,7 +48,10 @@ async function saveEventsToBlob(db) {
     return;
   }
   try {
-    const events = db.prepare('SELECT * FROM events').all();
+    const today = todayStr();
+    const events = db.prepare(
+      "SELECT * FROM events WHERE date IS NULL OR date >= ?"
+    ).all(today);
     const json = JSON.stringify(events);
     await put(BLOB_PATHNAME, json, {
       access: 'public',
@@ -59,10 +92,14 @@ async function hydrateFromBlob(db) {
     }
 
     const response = await axios.get(blobs[0].url);
-    const events = response.data;
+    let events = response.data;
     if (!Array.isArray(events)) {
       throw new Error('Blob data is not an array');
     }
+
+    // Drop past events that may have been stored before this guard was added
+    const today = todayStr();
+    events = events.filter((ev) => !ev.date || ev.date >= today);
 
     const stmt = db.prepare(`
       INSERT INTO events
@@ -122,4 +159,4 @@ async function hydrateFromBlob(db) {
   }
 }
 
-module.exports = { saveEventsToBlob, hydrateFromBlob };
+module.exports = { saveEventsToBlob, hydrateFromBlob, prunePastEvents };
