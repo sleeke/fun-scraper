@@ -1,20 +1,30 @@
 import { useState } from 'react';
 import { api } from '../api';
 import { SOURCE_LABELS, GENRE_EMOJI, formatPrice, formatDateWithWeekday } from './eventUtils';
+import ImageAnalysis from './ImageAnalysis';
 
 export default function EventDetail({ event, onClose, onParticipantsChange, toast }) {
   const [participants, setParticipants] = useState(event.participants || []);
   const [newName, setNewName] = useState('');
   const [adding, setAdding] = useState(false);
+  const [extraGenres, setExtraGenres] = useState([]);
 
   const price = formatPrice(event);
   // Support multiple genres from MusicBrainz (genres field) or fall back to genre
-  const genreList = event.genres
+  const baseGenreList = event.genres
     ? event.genres.split(',').map((g) => g.trim()).filter(Boolean)
     : event.genre
     ? [event.genre]
     : [];
+  // Merge in any genres discovered via image analysis (de-duplicated)
+  const genreList = [...new Set([...baseGenreList, ...extraGenres])];
   const formattedDate = formatDateWithWeekday(event.date);
+
+  function handleAnalysisComplete(analysis) {
+    if (analysis?.genres?.length > 0) {
+      setExtraGenres(analysis.genres.map((g) => g.toLowerCase()));
+    }
+  }
 
   async function handleAddParticipant(e) {
     e.preventDefault();
@@ -118,6 +128,14 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
             >
               🎟️ Buy Tickets
             </a>
+          )}
+
+          {event.image_url && (
+            <ImageAnalysis
+              event={event}
+              onAnalysisComplete={handleAnalysisComplete}
+              toast={toast}
+            />
           )}
 
           {/* Participants / Interest List */}

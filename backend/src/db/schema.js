@@ -54,10 +54,19 @@ function initSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_events_source ON events(source);
   `);
 
-  // Migrate: add genres column to existing databases that don't have it yet
+  // Migrate: add columns to existing databases that don't have them yet
   const cols = db.prepare("PRAGMA table_info(events)").all().map((c) => c.name);
   if (!cols.includes('genres')) {
     db.exec('ALTER TABLE events ADD COLUMN genres TEXT');
+  }
+  if (!cols.includes('image_analysis')) {
+    db.exec('ALTER TABLE events ADD COLUMN image_analysis TEXT');
+  }
+  if (!cols.includes('image_analysis_status')) {
+    db.exec('ALTER TABLE events ADD COLUMN image_analysis_status TEXT');
+  }
+  if (!cols.includes('analyzed_at')) {
+    db.exec('ALTER TABLE events ADD COLUMN analyzed_at TEXT');
   }
 }
 
