@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Search, Users, ChevronLeft, ChevronRight, Music2 } from 'lucide-react';
 import { api } from './api';
 import EventCard from './components/EventCard';
 import EventDetail from './components/EventDetail';
@@ -108,7 +109,7 @@ export default function App() {
   return (
     <div className="app">
       <nav className="navbar">
-        <a href="/" className="navbar-brand">🎶 fun-scraper</a>
+        <a href="/" className="navbar-brand"><Music2 size={20} strokeWidth={2} /> fun-scraper</a>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Vancouver Events</span>
       </nav>
 
@@ -119,7 +120,7 @@ export default function App() {
         <div className="search-bar">
           <input
             type="text"
-            placeholder="🔍 Search events, artists, venues…"
+            placeholder="Search events, artists, venues…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -138,7 +139,7 @@ export default function App() {
             onClick={() => { setInterestedOnly((v) => !v); setPage(1); }}
             title="Show only events with interested users"
           >
-            👥 Interested
+            <Users size={15} strokeWidth={2} /> Interested
           </button>
         </div>
 
@@ -152,7 +153,7 @@ export default function App() {
         {/* Events Grid */}
         {events.length === 0 && !loading ? (
           <div className="empty-state">
-            <div className="icon">🎸</div>
+            <div className="icon"><Music2 size={48} strokeWidth={1} /></div>
             <p>No events found. Try scraping a source above!</p>
           </div>
         ) : (
@@ -171,7 +172,7 @@ export default function App() {
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
             >
-              ← Prev
+              <ChevronLeft size={16} strokeWidth={2} /> Prev
             </button>
             <span>Page {page} of {totalPages}</span>
             <button
@@ -179,7 +180,7 @@ export default function App() {
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
             >
-              Next →
+              Next <ChevronRight size={16} strokeWidth={2} />
             </button>
           </div>
         )}

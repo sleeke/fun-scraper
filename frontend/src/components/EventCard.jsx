@@ -1,4 +1,5 @@
-import { GENRE_EMOJI, formatPrice, formatDateWithWeekday } from './eventUtils';
+import { MapPin, CalendarDays, Mic2, Music, Users } from 'lucide-react';
+import { formatPrice, formatDateWithWeekday } from './eventUtils';
 
 const MAX_INLINE_PARTICIPANTS = 3;
 
@@ -11,8 +12,6 @@ export default function EventCard({ event, onClick }) {
     : event.genre
     ? [event.genre]
     : [];
-  const primaryGenre = genreList[0] || null;
-  const genreEmoji = GENRE_EMOJI[primaryGenre] || '🎶';
   const formattedDate = formatDateWithWeekday(event.date);
 
   // Show names inline for small lists; show count for larger ones (names in tooltip)
@@ -30,33 +29,49 @@ export default function EventCard({ event, onClick }) {
   return (
     <div className="event-card" onClick={() => onClick(event)}>
       {event.image_url ? (
-        <img className="event-card-img" src={event.image_url} alt={event.title} loading="lazy" />
+        <div className="event-card-img-wrap">
+          <img className="event-card-img" src={event.image_url} alt={event.title} loading="lazy" />
+        </div>
       ) : (
-        <div className="event-card-img-placeholder">{genreEmoji}</div>
+        <div className="event-card-img-placeholder">
+          <Music size={36} strokeWidth={1.5} />
+        </div>
       )}
       <div className="event-card-body">
         <div className="event-card-title">{event.title}</div>
         <div className="event-card-meta">
-          {event.venue && <span>📍 {event.venue}</span>}
-          {formattedDate && <span>📅 {formattedDate}{event.time ? ` · ${event.time}` : ''}</span>}
+          {event.venue && (
+            <span className="event-card-meta-item">
+              <MapPin size={12} strokeWidth={2} className="meta-icon" />
+              {event.venue}
+            </span>
+          )}
+          {formattedDate && (
+            <span className="event-card-meta-item">
+              <CalendarDays size={12} strokeWidth={2} className="meta-icon" />
+              {formattedDate}{event.time ? ` · ${event.time}` : ''}
+            </span>
+          )}
           {event.artist && event.artist !== event.title && (
-            <span>🎤 {event.artist}</span>
+            <span className="event-card-meta-item">
+              <Mic2 size={12} strokeWidth={2} className="meta-icon" />
+              {event.artist}
+            </span>
           )}
         </div>
       </div>
       <div className="event-card-footer">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
           {genreList.map((g) => (
-            <span key={g} className="genre-badge">
-              {GENRE_EMOJI[g] || '🎶'} {g}
-            </span>
+            <span key={g} className="genre-badge">{g}</span>
           ))}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
           {price && <span className="price-badge">{price}</span>}
           {participantCount > 0 && (
             <span className="participants-count" title={participantNames}>
-              👥 {participantLabel}
+              <Users size={12} strokeWidth={2} className="meta-icon" />
+              {participantLabel}
             </span>
           )}
         </div>
