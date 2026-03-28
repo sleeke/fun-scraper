@@ -35,18 +35,20 @@ export default function ImageAnalysis({ event, onAnalysisComplete, toast }) {
 
   return (
     <div className="image-analysis">
-      <button
-        className="btn btn-secondary"
-        onClick={handleAnalyze}
-        disabled={analyzing}
-        title="Use AI to extract genres, artists, and vibe from this event flyer"
-      >
-        {analyzing ? (
-          <><span className="spinner" /> Analyzing…</>
-        ) : (
-          '🔍 Analyze Flyer'
-        )}
-      </button>
+      {!hasAnalysis && (
+        <button
+          className="btn btn-secondary"
+          onClick={handleAnalyze}
+          disabled={analyzing}
+          title="Use AI to extract genres, artists, and vibe from this event flyer"
+        >
+          {analyzing ? (
+            <><span className="spinner" /> Analyzing…</>
+          ) : (
+            '🔍 Analyze Flyer'
+          )}
+        </button>
+      )}
 
       {hasAnalysis && (
         <div className="image-analysis-result">
