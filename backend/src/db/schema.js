@@ -36,6 +36,7 @@ function initSchema(db) {
       ticket_url TEXT,
       image_url TEXT,
       description TEXT,
+      extra TEXT,
       scraped_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(source, source_id)
     );
@@ -58,6 +59,10 @@ function initSchema(db) {
   const cols = db.prepare("PRAGMA table_info(events)").all().map((c) => c.name);
   if (!cols.includes('genres')) {
     db.exec('ALTER TABLE events ADD COLUMN genres TEXT');
+  }
+  // Migrate: add extra JSON column for forward-compatible field storage
+  if (!cols.includes('extra')) {
+    db.exec('ALTER TABLE events ADD COLUMN extra TEXT');
   }
 }
 
