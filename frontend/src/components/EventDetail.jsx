@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { MapPin, CalendarDays, Mic2, Tag, Globe, Ticket, Users, X, Music, ZoomIn } from 'lucide-react';
 import { api } from '../api';
-import { SOURCE_LABELS, GENRE_EMOJI, formatPrice, formatDateWithWeekday } from './eventUtils';
+import { SOURCE_LABELS, formatPrice, formatDateWithWeekday } from './eventUtils';
 
 export default function EventDetail({ event, onClose, onParticipantsChange, toast }) {
   const [participants, setParticipants] = useState(event.participants || []);
   const [newName, setNewName] = useState('');
   const [adding, setAdding] = useState(false);
+  const [lightbox, setLightbox] = useState(false);
 
   const price = formatPrice(event);
   // Support multiple genres from MusicBrainz (genres field) or fall back to genre
@@ -46,12 +48,26 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
   }
 
   return (
+    <>
+      {lightbox && (
+        <div className="lightbox-overlay" onClick={() => setLightbox(false)} aria-label="Close image">
+          <button className="lightbox-close" onClick={() => setLightbox(false)} aria-label="Close">
+            <X size={22} strokeWidth={2} />
+          </button>
+          <img className="lightbox-img" src={event.image_url} alt={event.title} />
+        </div>
+      )}
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
-        <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          <X size={18} strokeWidth={2} />
+        </button>
 
         {event.image_url && (
-          <img className="modal-img" src={event.image_url} alt={event.title} />
+          <div className="modal-img-wrap" onClick={() => setLightbox(true)} title="Click to zoom">
+            <img className="modal-img" src={event.image_url} alt={event.title} />
+            <div className="modal-img-zoom-hint"><ZoomIn size={18} strokeWidth={2} /></div>
+          </div>
         )}
 
         <div className="modal-body">
@@ -59,45 +75,43 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
 
           <div className="modal-fields">
             <div className="modal-field">
-              <label>Venue</label>
-              <span>📍 {event.venue}</span>
+              <label><MapPin size={12} strokeWidth={2} className="field-icon" /> Venue</label>
+              <span>{event.venue}</span>
             </div>
             <div className="modal-field">
-              <label>City</label>
+              <label><Globe size={12} strokeWidth={2} className="field-icon" /> City</label>
               <span>{event.city || 'Vancouver'}</span>
             </div>
             {(formattedDate || event.date) && (
               <div className="modal-field">
-                <label>Date</label>
-                <span>📅 {formattedDate || event.date}{event.time ? ` at ${event.time}` : ''}</span>
+                <label><CalendarDays size={12} strokeWidth={2} className="field-icon" /> Date</label>
+                <span>{formattedDate || event.date}{event.time ? ` at ${event.time}` : ''}</span>
               </div>
             )}
             {event.artist && event.artist !== event.title && (
               <div className="modal-field">
-                <label>Artist</label>
-                <span>🎤 {event.artist}</span>
+                <label><Mic2 size={12} strokeWidth={2} className="field-icon" /> Artist</label>
+                <span>{event.artist}</span>
               </div>
             )}
             {price && (
               <div className="modal-field">
-                <label>Price</label>
+                <label><Tag size={12} strokeWidth={2} className="field-icon" /> Price</label>
                 <span className="price-badge">{price}</span>
               </div>
             )}
             {genreList.length > 0 && (
               <div className="modal-field">
-                <label>Genre</label>
+                <label><Music size={12} strokeWidth={2} className="field-icon" /> Genre</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {genreList.map((g) => (
-                    <span key={g} className="genre-badge">
-                      {GENRE_EMOJI[g] || '🎶'} {g}
-                    </span>
+                    <span key={g} className="genre-badge">{g}</span>
                   ))}
                 </div>
               </div>
             )}
             <div className="modal-field">
-              <label>Source</label>
+              <label><Globe size={12} strokeWidth={2} className="field-icon" /> Source</label>
               <span>{SOURCE_LABELS[event.source] || event.source}</span>
             </div>
           </div>
@@ -116,13 +130,13 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
               rel="noopener noreferrer"
               className="btn btn-primary"
             >
-              🎟️ Buy Tickets
+              <Ticket size={16} strokeWidth={2} /> Buy Tickets
             </a>
           )}
 
           {/* Participants / Interest List */}
           <div className="participants-section">
-            <h4>👥 Interest List ({participants.length})</h4>
+            <h4><Users size={14} strokeWidth={2} className="field-icon" /> Interest List ({participants.length})</h4>
             {participants.length > 0 && (
               <div className="participant-list">
                 {participants.map((p) => (
@@ -153,5 +167,6 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
         </div>
       </div>
     </div>
+    </>
   );
 }

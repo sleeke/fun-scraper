@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { api } from '../api';
 
 const SOURCE_LABELS = {
@@ -21,16 +22,16 @@ export default function ScrapePanel({ onScraped, toast }) {
     setResults((prev) => ({ ...prev, [source]: { type: 'info', message: 'Scraping…' } }));
     try {
       const result = await api.scrape(source);
-      const msg = `✅ Found ${result.scraped} events (${result.inserted ?? 0} new)`;
+      const msg = `Found ${result.scraped} events (${result.inserted ?? 0} new)`;
       console.log(`[scrape] ${SOURCE_LABELS[source]}:`, result);
       setResults((prev) => ({ ...prev, [source]: { type: 'success', message: msg } }));
-      toast(`✅ ${SOURCE_LABELS[source]}: ${msg.replace('✅ ', '')}`, 'success');
+      toast(`${SOURCE_LABELS[source]}: ${msg}`, 'success');
       onScraped && onScraped();
     } catch (err) {
       const msg = err.message || 'Unknown error';
       console.error(`[scrape] ${SOURCE_LABELS[source]} failed:`, msg);
-      setResults((prev) => ({ ...prev, [source]: { type: 'error', message: `❌ ${msg}` } }));
-      toast(`❌ ${SOURCE_LABELS[source]}: ${msg}`, 'error');
+      setResults((prev) => ({ ...prev, [source]: { type: 'error', message: msg } }));
+      toast(`${SOURCE_LABELS[source]}: ${msg}`, 'error');
     } finally {
       setLoading((prev) => ({ ...prev, [source]: false }));
     }
@@ -52,9 +53,9 @@ export default function ScrapePanel({ onScraped, toast }) {
               : '';
           const tooltip =
             result?.type === 'error'
-              ? result.message.replace(/^❌ /, '')
+              ? result.message
               : result?.type === 'success'
-              ? result.message.replace(/^✅ /, '')
+              ? result.message
               : undefined;
           return (
             <button
@@ -64,7 +65,9 @@ export default function ScrapePanel({ onScraped, toast }) {
               disabled={loading[key] || anyLoading}
               title={tooltip}
             >
-              {loading[key] ? <span className="spinner" style={{ width: 12, height: 12 }} /> : null}
+              {loading[key]
+                ? <RefreshCw size={12} strokeWidth={2} className="scrape-btn-icon spin" />
+                : null}
               {label}
             </button>
           );
