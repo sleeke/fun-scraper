@@ -419,3 +419,55 @@ describe('Events API - participant_names and has_participants', () => {
     expect(ev.participant_names == null).toBe(true);
   });
 });
+
+describe('POST /api/events/:id/analyze', () => {
+  let eventWithImageId;
+  let eventNoImageId;
+
+  beforeAll(async () => {
+    // Event with image URL
+    const r1 = await request(app).post('/api/events').send({
+      title: 'Image Analyze Test Event',
+      venue: 'Test Venue',
+      date: '2099-06-15',
+      image_url: 'https://example.com/flyer.jpg',
+    });
+    eventWithImageId = r1.body.id;
+
+    // Event without image
+    const r2 = await request(app).post('/api/events').send({
+      title: 'No Image Event',
+      venue: 'Test Venue',
+      date: '2099-06-16',
+    });
+    eventNoImageId = r2.body.id;
+  });
+
+  test('returns 404 for unknown event', async () => {
+    const res = await request(app).post('/api/events/99999/analyze');
+    expect(res.status).toBe(404);
+  });
+
+  test('returns 422 when event has no image', async () => {
+    const res = await request(app).post(`/api/events/${eventNoImageId}/analyze`);
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/no image/i);
+  });
+
+  test('returns 503 when OPENAI_API_KEY is not set', async () => {
+    const saved = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    const res = await request(app).post(`/api/events/${eventWithImageId}/analyze`);
+    expect(res.status).toBe(503);
+    expect(res.body.error).toMatch(/OPENAI_API_KEY/i);
+    if (saved !== undefined) process.env.OPENAI_API_KEY = saved;
+  });
+
+  test('GET /api/events/:id includes image_analysis columns', async () => {
+    const res = await request(app).get(`/api/events/${eventWithImageId}`);
+    expect(res.status).toBe(200);
+    expect(Object.prototype.hasOwnProperty.call(res.body, 'image_analysis')).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(res.body, 'image_analysis_status')).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(res.body, 'analyzed_at')).toBe(true);
+  });
+});

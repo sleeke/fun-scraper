@@ -38,4 +38,8 @@ export const api = {
   getSources: () => request('/scrape/sources'),
   scrape: (source, url) =>
     request('/scrape', { method: 'POST', body: JSON.stringify({ source, url }) }),
+
+  // Image analysis
+  analyzeEvent: (eventId) =>
+    request(`/events/${eventId}/analyze`, { method: 'POST' }),
 };

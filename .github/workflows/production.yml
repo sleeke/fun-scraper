@@ -6,7 +6,35 @@ on:
       - main
 
 jobs:
+  ci:
+    name: Backend tests & frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install backend dependencies
+        run: npm --prefix backend install
+
+      - name: Run backend tests
+        run: npm --prefix backend test
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend install --legacy-peer-deps
+
+      - name: Frontend lint
+        run: npm --prefix frontend run lint
+
+      - name: Frontend build
+        run: npm --prefix frontend run build
+
   deploy-production:
+    name: Deploy to production
+    needs: ci
     runs-on: ubuntu-latest
     permissions:
       contents: read

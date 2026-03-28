@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db/schema');
+const { analyzeImage } = require('../services/imageAnalyzer');
 
 /**
  * GET /api/events
@@ -150,6 +151,53 @@ router.delete('/:id', (req, res) => {
   const info = db.prepare('DELETE FROM events WHERE id = ?').run(req.params.id);
   if (info.changes === 0) return res.status(404).json({ error: 'Event not found' });
   res.json({ success: true });
+});
+
+/**
+ * POST /api/events/:id/analyze
+ * Analyze the event's flyer image using AI vision.
+ * Requires OPENAI_API_KEY to be set in the environment.
+ */
+router.post('/:id/analyze', async (req, res) => {
+  const db = getDb();
+  const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+
+  if (!event.image_url) {
+    return res.status(422).json({ error: 'Event has no image to analyze' });
+  }
+
+  // Return cached result if already analyzed successfully
+  if (event.image_analysis_status === 'completed' && event.image_analysis) {
+    return res.json({
+      cached: true,
+      analysis: JSON.parse(event.image_analysis),
+    });
+  }
+
+  // Mark as pending
+  db.prepare(
+    "UPDATE events SET image_analysis_status = 'pending' WHERE id = ?"
+  ).run(event.id);
+
+  try {
+    const analysis = await analyzeImage(event.image_url);
+
+    db.prepare(
+      `UPDATE events
+       SET image_analysis = ?, image_analysis_status = 'completed', analyzed_at = datetime('now')
+       WHERE id = ?`
+    ).run(JSON.stringify(analysis), event.id);
+
+    return res.json({ cached: false, analysis });
+  } catch (err) {
+    db.prepare(
+      "UPDATE events SET image_analysis_status = 'failed' WHERE id = ?"
+    ).run(event.id);
+
+    const status = err.statusCode || 500;
+    return res.status(status).json({ error: err.message });
+  }
 });
 
 module.exports = router;
