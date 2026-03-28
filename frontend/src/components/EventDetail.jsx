@@ -74,7 +74,7 @@ export default function EventDetail({ event, onClose, onParticipantsChange, toas
                 <span>📅 {formattedDate || event.date}{event.time ? ` at ${event.time}` : ''}</span>
               </div>
             )}
-            {event.artist && event.artist !== event.title && (
+            {event.artist && (
               <div className="modal-field">
                 <label>Artist</label>
                 <span>🎤 {event.artist}</span>

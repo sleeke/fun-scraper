@@ -100,7 +100,7 @@ export default function EventCard({ event, onClick }) {
         <div className="event-card-meta">
           {event.venue && <span>📍 {event.venue}</span>}
           {formattedDate && <span>📅 {formattedDate}{event.time ? ` · ${event.time}` : ''}</span>}
-          {event.artist && event.artist !== event.title && (
+          {event.artist && (
             <span>🎤 {event.artist}</span>
           )}
         </div>

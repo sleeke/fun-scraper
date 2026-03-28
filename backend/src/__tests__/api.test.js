@@ -27,7 +27,7 @@ describe('Events API', () => {
       artist: 'Test Artist',
       venue: 'Test Venue',
       city: 'Vancouver',
-      date: '2025-12-31',
+      date: '2099-12-31',
       price_text: '$25',
       price_min: 25,
       price_max: 25,
@@ -50,6 +50,23 @@ describe('Events API', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.events)).toBe(true);
     expect(res.body.events.length).toBeGreaterThan(0);
+  });
+
+  test('GET /api/events - excludes past events by default', async () => {
+    // Create an event in the past
+    const past = await request(app).post('/api/events').send({
+      title: 'Past Event',
+      venue: 'Old Venue',
+      date: '2000-01-01',
+    });
+    const pastId = past.body.id;
+
+    const res = await request(app).get('/api/events?search=Past+Event');
+    expect(res.status).toBe(200);
+    expect(res.body.events.some((e) => e.id === pastId)).toBe(false);
+
+    // Clean up
+    await request(app).delete(`/api/events/${pastId}`);
   });
 
   test('GET /api/events?search=Test - filters events', async () => {
@@ -175,7 +192,7 @@ describe('Events API - participant_names and has_participants', () => {
     const res = await request(app).post('/api/events').send({
       title: 'Interest Filter Test Event',
       venue: 'Test Venue',
-      date: '2025-12-25',
+      date: '2099-12-25',
     });
     eventId = res.body.id;
     // Add a participant
