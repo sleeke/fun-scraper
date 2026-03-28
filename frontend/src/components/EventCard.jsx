@@ -14,13 +14,25 @@ export default function EventCard({ event, onClick }) {
     // Only use intersection-based activation on touch/pointer-coarse devices (mobile)
     if (!window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
 
-    // Trigger "active" when the card enters the top ~20% of the viewport
+    let dwellTimer = null;
+
+    // Activate only after card has dwelled in the top ~20% of viewport for 1.5s
     const observer = new IntersectionObserver(
-      ([entry]) => setIsMobileActive(entry.isIntersecting),
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          dwellTimer = setTimeout(() => setIsMobileActive(true), 1500);
+        } else {
+          clearTimeout(dwellTimer);
+          setIsMobileActive(false);
+        }
+      },
       { rootMargin: '0px 0px -80% 0px', threshold: 0 }
     );
     observer.observe(card);
-    return () => observer.disconnect();
+    return () => {
+      clearTimeout(dwellTimer);
+      observer.disconnect();
+    };
   }, []);
 
   const price = formatPrice(event);
