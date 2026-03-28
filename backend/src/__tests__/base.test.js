@@ -1,7 +1,7 @@
 /**
- * Tests for base scraper utilities: detectGenre, parsePrice, parseDate
+ * Tests for base scraper utilities: detectGenre, parsePrice, parseDate, extractLineup
  */
-const { detectGenre, parsePrice, parseDate } = require('../scrapers/base');
+const { detectGenre, parsePrice, parseDate, extractLineup } = require('../scrapers/base');
 
 describe('detectGenre', () => {
   test('detects electronic from "techno rave"', () => {
@@ -106,5 +106,40 @@ describe('parseDate', () => {
   test('returns null for month-only text that cannot be parsed', () => {
     // "Mar" alone cannot produce a valid date
     expect(parseDate('Mar')).toBeNull();
+  });
+});
+
+describe('extractLineup', () => {
+  test('extracts artists from newline-separated description', () => {
+    const desc = 'Four Tet\nObjekt b2b Paula Temple\nDoors 9PM · 19+';
+    expect(extractLineup(desc)).toBe('Four Tet, Objekt b2b Paula Temple');
+  });
+
+  test('extracts artists separated by bullets on one line', () => {
+    const desc = 'DJ1 • DJ2 • DJ3\nTickets $25';
+    expect(extractLineup(desc)).toBe('DJ1, DJ2, DJ3');
+  });
+
+  test('stops at door-time logistics', () => {
+    const desc = 'Peggy Gou\nFloating Points\nDoors open 9PM\nAge 19+';
+    expect(extractLineup(desc)).toBe('Peggy Gou, Floating Points');
+  });
+
+  test('stops at ticket price info', () => {
+    const desc = 'Bonobo\n$20 advance / $25 door';
+    expect(extractLineup(desc)).toBe('Bonobo');
+  });
+
+  test('returns null for purely logistical description', () => {
+    const desc = 'Doors open at 9PM. Age 19+. Tickets at the door.';
+    expect(extractLineup(desc)).toBeNull();
+  });
+
+  test('returns null for null input', () => {
+    expect(extractLineup(null)).toBeNull();
+  });
+
+  test('returns null for empty string', () => {
+    expect(extractLineup('')).toBeNull();
   });
 });

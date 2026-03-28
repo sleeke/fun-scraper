@@ -4,7 +4,7 @@
  *
  * The site uses a standard WordPress / The Events Calendar setup.
  */
-const { fetchPage, detectGenre, parsePrice } = require('./base');
+const { fetchPage, detectGenre, parsePrice, extractLineup } = require('./base');
 
 const SOURCE = 'thisisblueprint';
 const DEFAULT_URL = 'https://thisisblueprint.com/events/';
@@ -51,7 +51,7 @@ async function scrape(url = DEFAULT_URL) {
         source: SOURCE,
         source_id: ticketUrl,
         title,
-        artist: title,
+        artist: null,
         venue: 'This Is Blueprint',
         city: 'Vancouver',
         date: null,
@@ -119,11 +119,19 @@ function extractEvent($, el) {
 
   const genre = detectGenre(`${title} ${description}`);
 
+  // Try specific artist/lineup elements, fall back to parsing description lines
+  const artistEl = $el
+    .find('[itemprop="performer"] [itemprop="name"], [itemprop="performer"], .event-artist, .artist-name, .headliner, .lineup-item, .performer, .lineup')
+    .first()
+    .text()
+    .trim();
+  const artist = artistEl || extractLineup(description) || null;
+
   return {
     source: SOURCE,
     source_id: normalizedTicketUrl || title,
     title,
-    artist: title,
+    artist,
     venue: venue || 'This Is Blueprint',
     city: 'Vancouver',
     date: dateText || null,

@@ -2,7 +2,7 @@
  * Scraper for Red Room Vancouver
  * https://redroom.ca/events
  */
-const { fetchPage, detectGenre, parsePrice, parseDate } = require('./base');
+const { fetchPage, detectGenre, parsePrice, parseDate, extractLineup } = require('./base');
 
 const SOURCE = 'redroom';
 const DEFAULT_URL = 'https://redroom.ca/events';
@@ -56,11 +56,19 @@ function extractEvent($, el) {
   const imageUrl = $el.find('img').first().attr('src') || null;
   const genre = detectGenre(`${title} ${description}`);
 
+  // Try specific artist/lineup elements, fall back to parsing description lines
+  const artistEl = $el
+    .find('[itemprop="performer"] [itemprop="name"], [itemprop="performer"], .event-artist, .artist-name, .headliner, .lineup-item, .performer, .lineup')
+    .first()
+    .text()
+    .trim();
+  const artist = artistEl || extractLineup(description) || null;
+
   return {
     source: SOURCE,
     source_id: ticketUrl || title,
     title,
-    artist: title,
+    artist,
     venue: 'Red Room',
     city: 'Vancouver',
     date,

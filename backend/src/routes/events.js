@@ -26,6 +26,9 @@ router.get('/', (req, res) => {
   let where = [];
   let params = [];
 
+  // Exclude past events by default (keep events with no date)
+  where.push("(e.date IS NULL OR e.date = '' OR e.date >= date('now'))");
+
   if (search) {
     where.push('(e.title LIKE ? OR e.artist LIKE ? OR e.venue LIKE ? OR e.description LIKE ?)');
     const like = `%${search}%`;

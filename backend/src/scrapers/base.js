@@ -180,4 +180,67 @@ async function lookupArtistGenres(artistName) {
   }
 }
 
-module.exports = { fetchPage, detectGenre, parsePrice, parseDate, lookupArtistGenres };
+/**
+ * Attempt to extract performer/lineup names from a scraped event description.
+ * Club event descriptions typically begin with artist names on their own lines,
+ * followed by logistics (door times, ticket links, age restrictions, etc.).
+ *
+ * Examples this handles:
+ *   "Four Tet\nObjekt b2b Paula Temple\nDoors 9PM · 19+"  → "Four Tet, Objekt b2b Paula Temple"
+ *   "DJ1 • DJ2 • DJ3\nTickets $25"                        → "DJ1, DJ2, DJ3"
+ *
+ * @param {string} description
+ * @returns {string|null} comma-separated artist names, or null if none could be extracted
+ */
+function extractLineup(description) {
+  if (!description) return null;
+  const clean = description.trim();
+  if (!clean) return null;
+
+  // Stop collecting artist names when any of these logistics patterns appear
+  const STOP_KEYWORDS   = /\b(doors?|tickets?|advance|admission|floor|stage|lineup:|support:)\b/i;
+  const STOP_AGE        = /age\s*\d+|\d{2}\+/i;
+  const STOP_PRICE      = /\$\d/;
+  const STOP_MISC       = /presented by|hosted by|note:|www\.|https?:\/\//i;
+  const isLogistics = (line) =>
+    STOP_KEYWORDS.test(line) ||
+    STOP_AGE.test(line) ||
+    STOP_PRICE.test(line) ||
+    STOP_MISC.test(line);
+
+  // Inline separators used to list multiple artists on one line (· U+00B7, • U+2022, |)
+  const INLINE_SEPARATOR = /\s*[·•|]\s*/;
+
+  // Bounds for plausible artist name / lineup line lengths
+  const MAX_ARTIST_LINE_LENGTH = 100;
+  const MIN_ARTIST_NAME_LENGTH = 2;
+  const MAX_ARTIST_NAME_LENGTH = 60;
+  const MAX_ARTISTS = 6;
+
+  const lines = clean
+    .split(/[\n\r]+/)
+    .map((l) => l.replace(/^[-–—*·•▸►]\s*/, '').trim())
+    .filter(Boolean);
+
+  const artists = [];
+  for (const line of lines) {
+    if (artists.length >= MAX_ARTISTS) break;
+    if (isLogistics(line)) break;
+    if (line.length > MAX_ARTIST_LINE_LENGTH) break;
+
+    // A single line might list multiple artists separated by · • |
+    const parts = line
+      .split(INLINE_SEPARATOR)
+      .map((p) => p.trim())
+      .filter((p) => p.length >= MIN_ARTIST_NAME_LENGTH && p.length <= MAX_ARTIST_NAME_LENGTH);
+    if (parts.length > 1) {
+      artists.push(...parts.slice(0, MAX_ARTISTS - artists.length));
+    } else if (line.length >= MIN_ARTIST_NAME_LENGTH) {
+      artists.push(line);
+    }
+  }
+
+  return artists.length > 0 ? artists.join(', ') : null;
+}
+
+module.exports = { fetchPage, detectGenre, parsePrice, parseDate, lookupArtistGenres, extractLineup };
