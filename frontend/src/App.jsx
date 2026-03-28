@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Users, ChevronLeft, ChevronRight, Music2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';import { Search, Users, ChevronLeft, ChevronRight, Music2 } from 'lucide-react';
 import { api } from './api';
 import EventCard from './components/EventCard';
 import EventDetail from './components/EventDetail';
@@ -35,6 +34,8 @@ export default function App() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const { toasts, addToast } = useToast();
   const searchTimer = useRef(null);
+  const gridRef = useRef(null);
+  const [mobileActiveId, setMobileActiveId] = useState(null);
 
   const fetchEvents = useCallback(
     async (opts = {}) => {
@@ -86,6 +87,59 @@ export default function App() {
     fetchEvents({ page });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  // Mobile: activate the first fully-visible card after 1.5s dwell; deactivate all others
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    if (!window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
+
+    const visibleCards = new Set();
+    let dwellTimer = null;
+    let currentDwellTarget = null;
+
+    function getTopmost() {
+      if (visibleCards.size === 0) return null;
+      let topmost = null;
+      let minTop = Infinity;
+      for (const el of visibleCards) {
+        const top = el.getBoundingClientRect().top;
+        if (top < minTop) { minTop = top; topmost = el; }
+      }
+      return topmost;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visibleCards.add(entry.target);
+          else visibleCards.delete(entry.target);
+        }
+
+        const topmost = getTopmost();
+        const topmostId = topmost ? topmost.dataset.eventId : null;
+
+        if (topmostId !== currentDwellTarget) {
+          clearTimeout(dwellTimer);
+          currentDwellTarget = topmostId;
+          setMobileActiveId(null);
+          if (topmostId) {
+            dwellTimer = setTimeout(() => setMobileActiveId(topmostId), 1500);
+          }
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    grid.querySelectorAll('.event-card').forEach((card) => observer.observe(card));
+
+    return () => {
+      clearTimeout(dwellTimer);
+      observer.disconnect();
+      visibleCards.clear();
+      setMobileActiveId(null);
+    };
+  }, [events]);
 
   async function handleCardClick(event) {
     try {
@@ -157,9 +211,9 @@ export default function App() {
             <p>No events found. Try scraping a source above!</p>
           </div>
         ) : (
-          <div className="event-grid">
+          <div className="event-grid" ref={gridRef}>
             {events.map((ev) => (
-              <EventCard key={ev.id} event={ev} onClick={handleCardClick} />
+              <EventCard key={ev.id} event={ev} onClick={handleCardClick} isActive={String(ev.id) === mobileActiveId} />
             ))}
           </div>
         )}

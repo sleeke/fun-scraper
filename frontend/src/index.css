@@ -131,34 +131,73 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.2s, transform 0.15s;
+  transition: border-color 0.25s, transform 0.2s;
   display: flex;
   flex-direction: column;
 }
-.event-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.event-card:hover,
+.event-card.is-active { border-color: var(--accent); transform: translateY(-2px); }
 .event-card-img-wrap { width: 100%; height: 140px; overflow: hidden; background: var(--surface2); }
-.event-card-img { width: 100%; height: 140px; object-fit: cover; opacity: 0.88; transition: opacity 0.2s; display: block; }
-.event-card:hover .event-card-img { opacity: 1; }
-.event-card-img-placeholder { width: 100%; height: 140px; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+
+/* Dormant: image is greyscale and slightly faded */
+.event-card-img {
+  width: 100%; height: 140px; object-fit: cover; display: block;
+  filter: grayscale(100%) brightness(0.72);
+  transition: filter 0.3s ease;
+}
+/* Active (hover or mobile top): full colour */
+.event-card:hover .event-card-img,
+.event-card.is-active .event-card-img { filter: none; }
+
+/* Dormant: placeholder icon is muted grey */
+.event-card-img-placeholder {
+  width: 100%; height: 140px; background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  color: #555;
+  transition: color 0.3s;
+}
+/* Active: restore placeholder icon colour */
+.event-card:hover .event-card-img-placeholder,
+.event-card.is-active .event-card-img-placeholder { color: var(--text-muted); }
+
 .event-card-body { padding: 14px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.event-card-title { font-size: 1rem; font-weight: 700; line-height: 1.3; }
+/* Dormant: title stays bold but in neutral tone */
+.event-card-title { font-size: 1rem; font-weight: 700; line-height: 1.3; color: #b0b0b0; transition: color 0.25s; }
+.event-card:hover .event-card-title,
+.event-card.is-active .event-card-title { color: var(--text); }
+
 .event-card-meta { font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 3px; }
 .event-card-meta-item { display: flex; align-items: center; gap: 5px; }
 .event-card-footer { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+
+/* Genre badge — dormant: desaturated */
 .genre-badge {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 100px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: var(--accent2);
-  color: #aac;
+  background: #333;
+  color: #888;
+  transition: background 0.25s, color 0.25s;
 }
-.price-badge { font-size: 0.85rem; font-weight: 600; color: #4caf50; }
+/* Active: accent highlight */
+.event-card:hover .genre-badge,
+.event-card.is-active .genre-badge { background: var(--accent); color: #fff; }
+
+/* Price badge — dormant: grey */
+.price-badge { font-size: 0.85rem; font-weight: 600; color: #888; transition: color 0.25s; }
+.event-card:hover .price-badge,
+.event-card.is-active .price-badge { color: #4caf50; }
+
 .participants-count { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
 
 /* Inline icon alignment helpers */
-.meta-icon { flex-shrink: 0; opacity: 0.7; }
+/* Dormant: icons are grey/monochrome */
+.meta-icon { flex-shrink: 0; color: #666; opacity: 1; transition: color 0.25s; }
+/* Active: icons highlighted in theme colour */
+.event-card:hover .meta-icon,
+.event-card.is-active .meta-icon { color: var(--accent); }
 .field-icon { flex-shrink: 0; opacity: 0.7; vertical-align: middle; margin-right: 3px; }
 
 /* ===== Event Detail Modal ===== */

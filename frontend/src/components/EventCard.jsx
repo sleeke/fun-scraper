@@ -3,7 +3,7 @@ import { formatPrice, formatDateWithWeekday } from './eventUtils';
 
 const MAX_INLINE_PARTICIPANTS = 3;
 
-export default function EventCard({ event, onClick }) {
+export default function EventCard({ event, onClick, isActive = false }) {
   const price = formatPrice(event);
 
   // Support multiple genres: prefer the `genres` field (MusicBrainz), fall back to `genre`
@@ -27,7 +27,11 @@ export default function EventCard({ event, onClick }) {
   }
 
   return (
-    <div className="event-card" onClick={() => onClick(event)}>
+    <div
+      data-event-id={event.id}
+      className={`event-card${isActive ? ' is-active' : ''}`}
+      onClick={() => onClick(event)}
+    >
       {event.image_url ? (
         <div className="event-card-img-wrap">
           <img className="event-card-img" src={event.image_url} alt={event.title} loading="lazy" />
