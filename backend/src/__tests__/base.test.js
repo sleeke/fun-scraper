@@ -1,7 +1,8 @@
 /**
- * Tests for base scraper utilities: detectGenre, parsePrice, parseDate
+ * Tests for base scraper utilities: detectGenre, parsePrice, parseDate,
+ * fetchPageWithRetry, getNextUserAgent
  */
-const { detectGenre, parsePrice, parseDate } = require('../scrapers/base');
+const { detectGenre, parsePrice, parseDate, getNextUserAgent, fetchPageWithRetry } = require('../scrapers/base');
 
 describe('detectGenre', () => {
   test('detects electronic from "techno rave"', () => {
@@ -106,5 +107,70 @@ describe('parseDate', () => {
   test('returns null for month-only text that cannot be parsed', () => {
     // "Mar" alone cannot produce a valid date
     expect(parseDate('Mar')).toBeNull();
+  });
+});
+
+describe('getNextUserAgent', () => {
+  test('returns a non-empty string', () => {
+    const ua = getNextUserAgent();
+    expect(typeof ua).toBe('string');
+    expect(ua.length).toBeGreaterThan(10);
+  });
+
+  test('rotates through multiple user agents', () => {
+    const seen = new Set();
+    // Call enough times to ensure we cycle through more than one UA
+    for (let i = 0; i < 10; i++) {
+      seen.add(getNextUserAgent());
+    }
+    expect(seen.size).toBeGreaterThan(1);
+  });
+});
+
+describe('fetchPageWithRetry', () => {
+  const axios = require('axios');
+
+  beforeEach(() => {
+    jest.spyOn(axios, 'get');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('resolves on first success', async () => {
+    axios.get.mockResolvedValueOnce({ data: '<html><body>OK</body></html>' });
+    const { html } = await fetchPageWithRetry('http://example.com');
+    expect(html).toContain('OK');
+    expect(axios.get).toHaveBeenCalledTimes(1);
+  });
+
+  test('retries on transient 500 error and eventually succeeds', async () => {
+    const err = Object.assign(new Error('Server Error'), { response: { status: 500 } });
+    axios.get
+      .mockRejectedValueOnce(err)
+      .mockResolvedValueOnce({ data: '<html><body>Recovered</body></html>' });
+
+    const { html } = await fetchPageWithRetry('http://example.com', { retries: 2, baseDelay: 0 });
+    expect(html).toContain('Recovered');
+    expect(axios.get).toHaveBeenCalledTimes(2);
+  });
+
+  test('does not retry on 403 (definitive block)', async () => {
+    const err = Object.assign(new Error('Forbidden'), { response: { status: 403 } });
+    axios.get.mockRejectedValue(err);
+
+    await expect(fetchPageWithRetry('http://example.com', { retries: 3, baseDelay: 0 }))
+      .rejects.toMatchObject({ message: 'Forbidden' });
+    expect(axios.get).toHaveBeenCalledTimes(1);
+  });
+
+  test('throws after exhausting all retries', async () => {
+    const err = Object.assign(new Error('Timeout'), { code: 'ETIMEDOUT' });
+    axios.get.mockRejectedValue(err);
+
+    await expect(fetchPageWithRetry('http://example.com', { retries: 2, baseDelay: 0 }))
+      .rejects.toMatchObject({ message: 'Timeout' });
+    expect(axios.get).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
   });
 });
