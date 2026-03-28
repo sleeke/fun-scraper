@@ -1,4 +1,9 @@
 require('dotenv').config();
+// Also load project-root .env.local (higher priority for local dev)
+require('dotenv').config({
+  path: require('path').join(__dirname, '../../.env.local'),
+  override: true,
+});
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
@@ -34,6 +39,9 @@ app.use('/api/scrape', scrapeLimiter);
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
+// Root: redirect to health for convenience
+app.get('/', (_req, res) => res.redirect('/api/health'));
+
 // Routes
 app.use('/api/events', eventsRouter);
 app.use('/api/events/:eventId/participants', participantsRouter);
@@ -44,5 +52,15 @@ app.use((err, _req, res, _next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });
 });
+
+// Hydrate SQLite from Vercel Blob on cold start.
+// Skipped in test environments (Jest sets NODE_ENV=test) to preserve test isolation.
+if (process.env.NODE_ENV !== 'test') {
+  const { getDb } = require('./db/schema');
+  const { hydrateFromBlob } = require('./db/blobSync');
+  hydrateFromBlob(getDb()).catch((err) =>
+    console.error('[startup] hydrateFromBlob error:', err.message)
+  );
+}
 
 module.exports = app;
