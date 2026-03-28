@@ -189,7 +189,7 @@ function buildEventListingsBody(areaId) {
             flyerFront
             images { id filename alt type crop __typename }
             pick { id blurb __typename }
-            venue { id name contentUrl live __typename }
+            venue { id name address contentUrl live __typename }
             artists { id name __typename }
             genres { name __typename }
             cost
@@ -261,6 +261,61 @@ function buildDefaultEventListingsBody(areaSlug) {
 }
 
 // ---------------------------------------------------------------------------
+// Vancouver location validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if an event's venue address or name is consistent with
+ * Vancouver, BC, Canada.  Used to filter out events that the RA API returned
+ * for the wrong area (e.g. when an incorrect numeric area ID was used).
+ *
+ * The check is intentionally lenient: events with no location data pass
+ * through (we trust the API filter in that case).  Only events that have an
+ * explicit address pointing to a different city/country are rejected.
+ */
+function isVancouverEvent(ev) {
+  if (!ev) return false;
+
+  // Check venue address field (available when we request it in the query)
+  const address = ev.venue?.address || '';
+  if (address) {
+    const normalized = address.toLowerCase();
+    // Accept if address contains Vancouver or BC markers
+    if (
+      normalized.includes('vancouver') ||
+      normalized.includes(', bc') ||
+      normalized.includes(', british columbia') ||
+      normalized.includes('v5') || // Many Vancouver postal codes start with V5/V6
+      normalized.includes('v6')
+    ) {
+      return true;
+    }
+    // Reject if address explicitly contains a different city / country
+    const otherCities = [
+      'london', 'manchester', 'berlin', 'amsterdam', 'paris', 'new york',
+      'los angeles', 'chicago', 'toronto', 'montreal', 'melbourne', 'sydney',
+      'miami', 'ibiza', 'barcelona', 'glasgow', 'liverpool', 'bristol',
+      'birmingham', 'leeds', 'sheffield', 'bristol', 'edinburgh',
+    ];
+    if (otherCities.some((city) => normalized.includes(city))) {
+      return false;
+    }
+    // Address exists but doesn't contain a known non-Vancouver city — pass it through
+    return true;
+  }
+
+  // No address — check the event's contentUrl for the area slug
+  const contentUrl = ev.contentUrl || '';
+  if (contentUrl && !contentUrl.includes('/ca/vancouver') && !contentUrl.includes('/events/ca/')) {
+    // contentUrl doesn't confirm Vancouver but that's not a rejection signal —
+    // event content URLs don't reliably encode the listing area
+  }
+
+  // No location data to validate — trust the API filter
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // Event mapping
 // ---------------------------------------------------------------------------
 
@@ -327,8 +382,13 @@ async function scrapeViaNumericAreaId(areaId, cookieHeader) {
     return [];
   }
 
-  const events = listings.map((l) => mapRaEvent(l.event, l)).filter(Boolean);
-  console.log(`[ra:graphql-numeric] area=${areaId} – ${events.length} events`);
+  const filtered = listings.filter((l) => isVancouverEvent(l.event));
+  const skipped = listings.length - filtered.length;
+  if (skipped > 0) {
+    console.warn(`[ra:graphql-numeric] Filtered out ${skipped} non-Vancouver event(s) for area=${areaId}`);
+  }
+  const events = filtered.map((l) => mapRaEvent(l.event, l)).filter(Boolean);
+  console.log(`[ra:graphql-numeric] area=${areaId} – ${events.length} Vancouver events`);
   return events;
 }
 
@@ -352,8 +412,13 @@ async function scrapeViaSlug(slug, cookieHeader) {
     return [];
   }
 
-  const events = listings.map((l) => mapRaEvent(l.event, l)).filter(Boolean);
-  console.log(`[ra:graphql-slug] slug="${slug}" – ${events.length} events`);
+  const filtered = listings.filter((l) => isVancouverEvent(l.event));
+  const skipped = listings.length - filtered.length;
+  if (skipped > 0) {
+    console.warn(`[ra:graphql-slug] Filtered out ${skipped} non-Vancouver event(s) for slug="${slug}"`);
+  }
+  const events = filtered.map((l) => mapRaEvent(l.event, l)).filter(Boolean);
+  console.log(`[ra:graphql-slug] slug="${slug}" – ${events.length} Vancouver events`);
   return events;
 }
 
@@ -364,21 +429,20 @@ async function scrapeViaSlug(slug, cookieHeader) {
 async function scrapeViaApi(pageUrl) {
   const cookieHeader = await seedCookies();
 
-  // 1a. Numeric area ID (GET_EVENT_LISTINGS) – try page-extracted ID first,
-  //     then fall back to commonly observed Vancouver area IDs.
+  // 1a. Numeric area ID (GET_EVENT_LISTINGS) – only attempt this when we can
+  //     reliably determine the Vancouver area ID from the RA events page itself.
+  //     We do NOT fall back to hard-coded guesses because an incorrect ID will
+  //     silently return events for the wrong city (e.g. London area 13).
   const extractedId = await lookupAreaId(pageUrl, cookieHeader);
-  // Known Vancouver IDs tried in order (page-extracted takes precedence)
-  const areaIdsToTry = extractedId
-    ? [extractedId]
-    : [13, 306, 15, 1];
-
-  for (const areaId of areaIdsToTry) {
+  if (extractedId) {
     try {
-      const events = await scrapeViaNumericAreaId(areaId, cookieHeader);
+      const events = await scrapeViaNumericAreaId(extractedId, cookieHeader);
       if (events.length > 0) return events;
     } catch (err) {
-      console.warn(formatError(err, 'graphql-numeric', `${RA_GRAPHQL} (area=${areaId})`));
+      console.warn(formatError(err, 'graphql-numeric', `${RA_GRAPHQL} (area=${extractedId})`));
     }
+  } else {
+    console.warn('[ra:graphql-numeric] Could not extract area ID from page – skipping numeric area ID strategy to avoid wrong-city results');
   }
 
   // 1b. Slug-based (GET_DEFAULT_EVENTS_LISTING)
@@ -413,9 +477,14 @@ async function scrapeViaPlaywright(url) {
   if (apiData) {
     const listings = apiData?.data?.eventListings?.data;
     if (Array.isArray(listings) && listings.length > 0) {
-      const events = listings.map((l) => mapRaEvent(l.event, l)).filter(Boolean);
+      const filtered = listings.filter((l) => isVancouverEvent(l.event));
+      const skipped = listings.length - filtered.length;
+      if (skipped > 0) {
+        console.warn(`[ra:playwright] Filtered out ${skipped} non-Vancouver event(s) from intercepted GraphQL response`);
+      }
+      const events = filtered.map((l) => mapRaEvent(l.event, l)).filter(Boolean);
       if (events.length > 0) {
-        console.log(`[ra:playwright] GraphQL intercept succeeded – ${events.length} events`);
+        console.log(`[ra:playwright] GraphQL intercept succeeded – ${events.length} Vancouver events`);
         return events;
       }
     }
@@ -480,6 +549,7 @@ function parseRaHtml($, html, method = 'html') {
 
       for (const listing of listings) {
         const ev = listing.event || listing;
+        if (!isVancouverEvent(ev)) continue;
         const mapped = mapRaEvent(ev, listing);
         if (mapped) events.push(mapped);
       }
