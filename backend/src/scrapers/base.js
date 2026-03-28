@@ -1,13 +1,37 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-const DEFAULT_HEADERS = {
-  'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-    '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-  'Accept-Language': 'en-CA,en;q=0.9',
-};
+/** Pool of realistic desktop browser user-agent strings to rotate. */
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15',
+];
+
+let _uaIndex = 0;
+
+/** Returns a user agent string, cycling through the pool on each call. */
+function getNextUserAgent() {
+  const ua = USER_AGENTS[_uaIndex % USER_AGENTS.length];
+  _uaIndex += 1;
+  return ua;
+}
+
+function buildDefaultHeaders() {
+  return {
+    'User-Agent': getNextUserAgent(),
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-CA,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+  };
+}
 
 /**
  * Fetch HTML from a URL and return a cheerio instance.
@@ -17,13 +41,49 @@ const DEFAULT_HEADERS = {
  */
 async function fetchPage(url, options = {}) {
   const response = await axios.get(url, {
-    headers: DEFAULT_HEADERS,
+    headers: buildDefaultHeaders(),
     timeout: 15000,
     ...options,
   });
   const html = response.data;
   const $ = cheerio.load(html);
   return { $, html };
+}
+
+/**
+ * Like fetchPage but retries on transient failures with exponential back-off.
+ *
+ * @param {string} url
+ * @param {object} [options]          - axios options
+ * @param {number} [options.retries=3]  - max attempts (not counting the first)
+ * @param {number} [options.baseDelay=500] - initial delay in ms (doubles each retry)
+ * @returns {Promise<{$: CheerioAPI, html: string}>}
+ */
+async function fetchPageWithRetry(url, options = {}) {
+  const { retries = 3, baseDelay = 500, ...axiosOptions } = options;
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await axios.get(url, {
+        headers: buildDefaultHeaders(),
+        timeout: 20000,
+        ...axiosOptions,
+      });
+      const html = response.data;
+      const $ = cheerio.load(html);
+      return { $, html };
+    } catch (err) {
+      lastErr = err;
+      const status = err.response?.status;
+      // Don't retry on definitive client-side errors
+      if (status === 404 || status === 401 || status === 403) throw err;
+      if (attempt < retries) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 /**
@@ -180,4 +240,4 @@ async function lookupArtistGenres(artistName) {
   }
 }
 
-module.exports = { fetchPage, detectGenre, parsePrice, parseDate, lookupArtistGenres };
+module.exports = { fetchPage, fetchPageWithRetry, getNextUserAgent, detectGenre, parsePrice, parseDate, lookupArtistGenres };
