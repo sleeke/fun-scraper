@@ -48,6 +48,10 @@ export default function App() {
           ...(((opts.interestedOnly ?? interestedOnly)) ? { has_participants: 'true' } : {}),
         };
         const data = await api.getEvents(params);
+        // The server already filters past events using local date.
+        // Trust the server's response directly — a client-side UTC filter would
+        // cause a date mismatch and make the last page appear to have fewer events
+        // than the pagination total implies.
         setEvents(data.events);
         setTotal(data.total);
       } catch (err) {

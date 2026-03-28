@@ -159,4 +159,4 @@ async function hydrateFromBlob(db) {
   }
 }
 
-module.exports = { saveEventsToBlob, hydrateFromBlob, prunePastEvents };
+module.exports = { saveEventsToBlob, hydrateFromBlob, prunePastEvents, todayStr };

@@ -53,12 +53,16 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Hydrate SQLite from Vercel Blob on cold start.
-// Skipped in test environments (Jest sets NODE_ENV=test) to preserve test isolation.
+// On startup (non-test only):
+//   1. Prune past events from SQLite so stale data never accumulates across restarts.
+//   2. Hydrate from Vercel Blob if the local DB is empty (cold-start recovery).
+// Both are skipped in test environments (Jest sets NODE_ENV=test).
 if (process.env.NODE_ENV !== 'test') {
   const { getDb } = require('./db/schema');
-  const { hydrateFromBlob } = require('./db/blobSync');
-  hydrateFromBlob(getDb()).catch((err) =>
+  const { hydrateFromBlob, prunePastEvents } = require('./db/blobSync');
+  const startupDb = getDb();
+  prunePastEvents(startupDb);
+  hydrateFromBlob(startupDb).catch((err) =>
     console.error('[startup] hydrateFromBlob error:', err.message)
   );
 }

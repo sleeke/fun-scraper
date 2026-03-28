@@ -98,6 +98,18 @@ router.post('/', async (req, res) => {
 
     const db = getDb();
 
+    // Drop events that are already in the past before touching the DB.
+    // "Past" means the event has a date field and it is strictly before today.
+    // Use LOCAL date (not toISOString which is UTC) so today's events are kept.
+    const _now = new Date();
+    const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
+    const futureEvents = events.filter((ev) => !ev.date || ev.date >= today);
+    if (futureEvents.length < events.length) {
+      console.log(
+        `[scrape] ${source}: dropped ${events.length - futureEvents.length} past events`
+      );
+    }
+
     const stmt = db.prepare(`
       INSERT INTO events
         (source, source_id, title, artist, venue, city, date, time,
@@ -143,7 +155,7 @@ router.post('/', async (req, res) => {
       return { inserted, updated };
     });
 
-    const result = upsertMany(events);
+    const result = upsertMany(futureEvents);
     // Remove past events from the live DB so stale results never appear.
     prunePastEvents(db);
     // Fire-and-forget: sync events to Vercel Blob in the background.
@@ -151,7 +163,7 @@ router.post('/', async (req, res) => {
     saveEventsToBlob(db).catch((err) =>
       console.warn('[scrape] saveEventsToBlob failed:', err.message)
     );
-    res.json({ source, scraped: events.length, ...result });
+    res.json({ source, scraped: events.length, stored: futureEvents.length, ...result });
   } catch (err) {
     const friendlyMsg = describeError(err);
     console.error(`[scrape] Error scraping ${source}: ${friendlyMsg}`, {

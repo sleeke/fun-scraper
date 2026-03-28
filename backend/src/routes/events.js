@@ -23,8 +23,15 @@ router.get('/', (req, res) => {
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
   const offset = (pageNum - 1) * limitNum;
 
-  let where = [];
-  let params = [];
+  // Compute today's date using LOCAL time so events happening today are never
+  // dropped due to UTC being ahead of the server's local timezone.
+  const now = new Date();
+  const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  // Always exclude past events: only return events with no date, or date >= today.
+  // First entry in where must match first entry in params.
+  let where = ['(e.date IS NULL OR e.date >= ?)'];
+  let params = [todayLocal];
 
   if (search) {
     where.push('(e.title LIKE ? OR e.artist LIKE ? OR e.venue LIKE ? OR e.description LIKE ?)');
