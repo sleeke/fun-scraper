@@ -2,7 +2,7 @@
  * Scraper for Blueprint Events Vancouver
  * https://www.blueprintevents.ca/events
  */
-const { fetchPage, detectGenre, parsePrice } = require('./base');
+const { fetchPage, detectGenre, parsePrice, extractLineup } = require('./base');
 
 const SOURCE = 'blueprint';
 const DEFAULT_URL = 'https://www.blueprintevents.ca/events';
@@ -33,11 +33,19 @@ async function scrape(url = DEFAULT_URL) {
     const allText = `${title} ${description}`;
     const genre = detectGenre(allText);
 
+    // Try specific artist/lineup elements, fall back to parsing description lines
+    const artistEl = $el
+      .find('[itemprop="performer"] [itemprop="name"], [itemprop="performer"], .event-artist, .artist-name, .headliner, .lineup-item, .performer, .lineup')
+      .first()
+      .text()
+      .trim();
+    const artist = artistEl || extractLineup(description) || null;
+
     events.push({
       source: SOURCE,
       source_id: ticketUrl || title,
       title,
-      artist: title,
+      artist,
       venue: venue || 'Blueprint Events Venue',
       city: 'Vancouver',
       date: dateText || null,

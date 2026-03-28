@@ -2,7 +2,7 @@
  * Scraper for Fortune Sound Club Vancouver
  * https://www.fortunesoundclub.com/events
  */
-const { fetchPage, detectGenre, parsePrice, parseDate } = require('./base');
+const { fetchPage, detectGenre, parsePrice, parseDate, extractLineup } = require('./base');
 
 const SOURCE = 'fortune';
 const DEFAULT_URL = 'https://www.fortunesoundclub.com/events';
@@ -57,11 +57,19 @@ function extractEvent($, el) {
   const imageUrl = $el.find('img').first().attr('src') || null;
   const genre = detectGenre(`${title} ${description}`);
 
+  // Try specific artist/lineup elements, fall back to parsing description lines
+  const artistEl = $el
+    .find('[itemprop="performer"] [itemprop="name"], [itemprop="performer"], .event-artist, .artist-name, .headliner, .lineup-item, .performer, .lineup')
+    .first()
+    .text()
+    .trim();
+  const artist = artistEl || extractLineup(description) || null;
+
   return {
     source: SOURCE,
     source_id: ticketUrl || title,
     title,
-    artist: title,
+    artist,
     venue: 'Fortune Sound Club',
     city: 'Vancouver',
     date,

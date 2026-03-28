@@ -2,7 +2,7 @@
  * Scraper for Celebrities Night Club Vancouver
  * https://www.celebritiesnightclub.com/events
  */
-const { fetchPage, detectGenre, parsePrice, parseDate } = require('./base');
+const { fetchPage, detectGenre, parsePrice, parseDate, extractLineup } = require('./base');
 
 const SOURCE = 'celebrities';
 const DEFAULT_URL = 'https://www.celebritiesnightclub.com/events';
@@ -46,7 +46,7 @@ async function scrape(url = DEFAULT_URL) {
           source: SOURCE,
           source_id: ticketUrl,
           title,
-          artist: title,
+          artist: null,
           venue: 'Celebrities Night Club',
           city: 'Vancouver',
           date: null,
@@ -117,11 +117,19 @@ function extractEvent($, el, source) {
   const imageUrl = $el.find('img').first().attr('src') || null;
   const genre = detectGenre(`${title} ${description}`);
 
+  // Try specific artist/lineup elements, fall back to parsing description lines
+  const artistEl = $el
+    .find('[itemprop="performer"] [itemprop="name"], [itemprop="performer"], .event-artist, .artist-name, .headliner, .lineup-item, .performer, .lineup')
+    .first()
+    .text()
+    .trim();
+  const artist = artistEl || extractLineup(description) || null;
+
   return {
     source,
     source_id: ticketUrl || title,
     title,
-    artist: title,
+    artist,
     venue: 'Celebrities Night Club',
     city: 'Vancouver',
     date,
