@@ -3,6 +3,14 @@ const router = express.Router();
 const SCRAPERS = require('../scrapers');
 const { getDb } = require('../db/schema');
 const { lookupArtistGenres, detectGenre } = require('../scrapers/base');
+const { saveAllEventsToBlob } = require('../blob');
+
+// Fields with dedicated SQLite columns — everything else goes to `extra`.
+const KNOWN_EVENT_FIELDS = new Set([
+  'source', 'source_id', 'title', 'artist', 'venue', 'city',
+  'date', 'time', 'price_min', 'price_max', 'price_text',
+  'genre', 'genres', 'ticket_url', 'image_url', 'description',
+]);
 
 /**
  * Enrich events with MusicBrainz genres for artists that don't yet have
@@ -100,24 +108,25 @@ router.post('/', async (req, res) => {
     const stmt = db.prepare(`
       INSERT INTO events
         (source, source_id, title, artist, venue, city, date, time,
-         price_min, price_max, price_text, genre, genres, ticket_url, image_url, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         price_min, price_max, price_text, genre, genres, ticket_url, image_url, description, extra)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(source, source_id) DO UPDATE SET
-        title = excluded.title,
-        artist = excluded.artist,
-        venue = excluded.venue,
-        city = excluded.city,
-        date = excluded.date,
-        time = excluded.time,
-        price_min = excluded.price_min,
-        price_max = excluded.price_max,
-        price_text = excluded.price_text,
-        genre = excluded.genre,
-        genres = excluded.genres,
-        ticket_url = excluded.ticket_url,
-        image_url = excluded.image_url,
+        title       = excluded.title,
+        artist      = excluded.artist,
+        venue       = excluded.venue,
+        city        = excluded.city,
+        date        = excluded.date,
+        time        = excluded.time,
+        price_min   = excluded.price_min,
+        price_max   = excluded.price_max,
+        price_text  = excluded.price_text,
+        genre       = excluded.genre,
+        genres      = excluded.genres,
+        ticket_url  = excluded.ticket_url,
+        image_url   = excluded.image_url,
         description = excluded.description,
-        scraped_at = datetime('now')
+        extra       = excluded.extra,
+        scraped_at  = datetime('now')
     `);
 
     const checkStmt = db.prepare('SELECT id FROM events WHERE source = ? AND source_id = ?');
@@ -128,13 +137,17 @@ router.post('/', async (req, res) => {
       for (const ev of evts) {
         if (!ev.source_id) continue; // skip events without an identifier
         const existing = checkStmt.get(ev.source, ev.source_id);
+        const extraObj = Object.fromEntries(
+          Object.entries(ev).filter(([k]) => !KNOWN_EVENT_FIELDS.has(k))
+        );
+        const extra = Object.keys(extraObj).length ? JSON.stringify(extraObj) : null;
         stmt.run(
           ev.source, ev.source_id, ev.title, ev.artist || null,
           ev.venue, ev.city || 'Vancouver', ev.date || null, ev.time || null,
           ev.price_min ?? null, ev.price_max ?? null, ev.price_text || null,
           ev.genre || null, ev.genres || null,
           ev.ticket_url || null, ev.image_url || null,
-          ev.description || null
+          ev.description || null, extra
         );
         if (existing) updated++;
         else inserted++;
@@ -143,6 +156,13 @@ router.post('/', async (req, res) => {
     });
 
     const result = upsertMany(events);
+
+    // Persist to Vercel Blob (no-op locally without BLOB_READ_WRITE_TOKEN).
+    // Runs after responding so latency is not added to the HTTP response.
+    saveAllEventsToBlob(db).catch((blobErr) =>
+      console.warn('[blob] Failed to persist after scrape:', blobErr.message)
+    );
+
     res.json({ source, scraped: events.length, ...result });
   } catch (err) {
     const friendlyMsg = describeError(err);
