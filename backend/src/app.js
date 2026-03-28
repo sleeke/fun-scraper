@@ -36,6 +36,30 @@ const scrapeLimiter = rateLimit({
 app.use('/api', apiLimiter);
 app.use('/api/scrape', scrapeLimiter);
 
+// On startup (non-test only):
+//   1. Prune past events from SQLite so stale data never accumulates across restarts.
+//   2. Hydrate from Vercel Blob if the local DB is empty (cold-start recovery).
+// Both are skipped in test environments (Jest sets NODE_ENV=test).
+//
+// hydrationReady is awaited by the middleware below so that the first incoming
+// request blocks until the DB is populated rather than returning an empty list.
+let hydrationReady = Promise.resolve();
+if (process.env.NODE_ENV !== 'test') {
+  const { getDb } = require('./db/schema');
+  const { hydrateFromBlob, prunePastEvents } = require('./db/blobSync');
+  const startupDb = getDb();
+  prunePastEvents(startupDb);
+  hydrationReady = hydrateFromBlob(startupDb).catch((err) =>
+    console.error('[startup] hydrateFromBlob error:', err.message)
+  );
+}
+
+// Wait for DB hydration to complete before processing any API route so that the
+// very first page load returns events instead of an empty list.
+app.use('/api', (_req, _res, next) => {
+  hydrationReady.then(() => next(), () => next());
+});
+
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
@@ -52,19 +76,5 @@ app.use((err, _req, res, _next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });
 });
-
-// On startup (non-test only):
-//   1. Prune past events from SQLite so stale data never accumulates across restarts.
-//   2. Hydrate from Vercel Blob if the local DB is empty (cold-start recovery).
-// Both are skipped in test environments (Jest sets NODE_ENV=test).
-if (process.env.NODE_ENV !== 'test') {
-  const { getDb } = require('./db/schema');
-  const { hydrateFromBlob, prunePastEvents } = require('./db/blobSync');
-  const startupDb = getDb();
-  prunePastEvents(startupDb);
-  hydrateFromBlob(startupDb).catch((err) =>
-    console.error('[startup] hydrateFromBlob error:', err.message)
-  );
-}
 
 module.exports = app;
