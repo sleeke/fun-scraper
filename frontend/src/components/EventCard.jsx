@@ -1,9 +1,28 @@
+import { useState, useRef, useEffect } from 'react';
 import { MapPin, CalendarDays, Mic2, Music, Users } from 'lucide-react';
 import { formatPrice, formatDateWithWeekday } from './eventUtils';
 
 const MAX_INLINE_PARTICIPANTS = 3;
 
 export default function EventCard({ event, onClick }) {
+  const [isMobileActive, setIsMobileActive] = useState(false);
+  const cardRef = useRef(null);
+
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    // Only use intersection-based activation on touch/pointer-coarse devices (mobile)
+    if (!window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
+
+    // Trigger "active" when the card enters the top ~20% of the viewport
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsMobileActive(entry.isIntersecting),
+      { rootMargin: '0px 0px -80% 0px', threshold: 0 }
+    );
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, []);
+
   const price = formatPrice(event);
 
   // Support multiple genres: prefer the `genres` field (MusicBrainz), fall back to `genre`
@@ -27,7 +46,7 @@ export default function EventCard({ event, onClick }) {
   }
 
   return (
-    <div className="event-card" onClick={() => onClick(event)}>
+    <div ref={cardRef} className={`event-card${isMobileActive ? ' is-active' : ''}`} onClick={() => onClick(event)}>
       {event.image_url ? (
         <div className="event-card-img-wrap">
           <img className="event-card-img" src={event.image_url} alt={event.title} loading="lazy" />
