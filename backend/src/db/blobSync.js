@@ -35,6 +35,49 @@ function prunePastEvents(db) {
 }
 
 /**
+ * Remove events from SQLite that are not from Vancouver.
+ *
+ * Two passes:
+ *   1. General city guard — deletes any event whose `city` column is set to a
+ *      value other than a Vancouver-area city (catches future scraper bugs on
+ *      any source).  The LIKE '%Vancouver%' pattern intentionally keeps both
+ *      'Vancouver', 'North Vancouver', and 'West Vancouver' since all are part
+ *      of the Greater Vancouver area served by this app.
+ *   2. Stale RA source cleanup — the Resident Advisor scraper previously had a
+ *      bug that returned London events labelled as Vancouver.  Any RA event that
+ *      was scraped before today is considered potentially tainted and is removed
+ *      so it can be re-populated by the corrected scraper.  RA events scraped
+ *      today (or with no scraped_at) were inserted after the fix and are kept.
+ *      This query runs on every startup but is a cheap no-op once all old events
+ *      have been removed — no migration guard is needed.
+ *
+ * @param {import('better-sqlite3').Database} db
+ * @returns {{ cityPruned: number, raPruned: number }} counts of deleted rows
+ */
+function pruneNonVancouverEvents(db) {
+  // 1. General: remove events with an explicitly non-Vancouver city
+  const cityResult = db.prepare(
+    "DELETE FROM events WHERE city IS NOT NULL AND city NOT LIKE '%Vancouver%'"
+  ).run();
+  if (cityResult.changes > 0) {
+    console.log(`[blobSync] Pruned ${cityResult.changes} event(s) with non-Vancouver city`);
+  }
+
+  // 2. Source-specific: purge RA events that were scraped before today — these
+  //    may have been ingested by the broken scraper which returned London events.
+  //    Events scraped today were stored after the fix and are trusted.
+  const today = todayStr();
+  const raResult = db.prepare(
+    "DELETE FROM events WHERE source = 'residentadvisor' AND scraped_at IS NOT NULL AND date(scraped_at) < ?"
+  ).run(today);
+  if (raResult.changes > 0) {
+    console.log(`[blobSync] Pruned ${raResult.changes} stale Resident Advisor event(s) scraped before ${today}`);
+  }
+
+  return { cityPruned: cityResult.changes, raPruned: raResult.changes };
+}
+
+/**
  * Serialise future/current events from SQLite and upload to Vercel Blob.
  * Past events (date < today) are excluded from the upload.
  * No-op if BLOB_READ_WRITE_TOKEN is not configured.
@@ -159,4 +202,4 @@ async function hydrateFromBlob(db) {
   }
 }
 
-module.exports = { saveEventsToBlob, hydrateFromBlob, prunePastEvents, todayStr };
+module.exports = { saveEventsToBlob, hydrateFromBlob, prunePastEvents, pruneNonVancouverEvents, todayStr };

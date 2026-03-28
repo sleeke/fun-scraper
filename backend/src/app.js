@@ -46,9 +46,10 @@ app.use('/api/scrape', scrapeLimiter);
 let hydrationReady = Promise.resolve();
 if (process.env.NODE_ENV !== 'test') {
   const { getDb } = require('./db/schema');
-  const { hydrateFromBlob, prunePastEvents } = require('./db/blobSync');
+  const { hydrateFromBlob, prunePastEvents, pruneNonVancouverEvents } = require('./db/blobSync');
   const startupDb = getDb();
   prunePastEvents(startupDb);
+  pruneNonVancouverEvents(startupDb);
   hydrationReady = hydrateFromBlob(startupDb).catch((err) =>
     console.error('[startup] hydrateFromBlob error:', err.message)
   );
