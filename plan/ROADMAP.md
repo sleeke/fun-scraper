@@ -20,6 +20,15 @@
 
 ### Medium Priority
 
+#### Event submission
+
+- People should be able to submit events through a form on the site. This would allow users to contribute events that may not be easily scraped, and it would also provide an alternative method for adding events to the database.
+- A user should be able to filter events by those submitted by users vs those scraped from the web.
+
+#### Auto scroll
+
+- Implement auto-scrolling on the frontend to allow users to easily browse through events without having to click through pagination. This would enhance the user experience and make it more seamless to discover events.
+
 #### Formatting of UI
 
 - Event details text should be bolder, and the image should be less prominent.
