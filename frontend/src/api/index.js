@@ -24,6 +24,24 @@ export const api = {
   createEvent: (data) => request('/events', { method: 'POST', body: JSON.stringify(data) }),
   deleteEvent: (id) => request(`/events/${id}`, { method: 'DELETE' }),
 
+  // Manual event submission from URL
+  submitEventUrl: (url) =>
+    request('/events/from-url', { method: 'POST', body: JSON.stringify({ url }) }),
+
+  // Manual event submission from PDF/document upload
+  submitEventPdf: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return fetch(`${BASE}/events/from-pdf`, { method: 'POST', body: formData })
+      .then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+        return res.json();
+      });
+  },
+
   // Participants
   getParticipants: (eventId) => request(`/events/${eventId}/participants`),
   addParticipant: (eventId, name) =>

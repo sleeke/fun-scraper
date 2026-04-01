@@ -1,7 +1,11 @@
 const express = require('express');
+const multer = require('multer');
 const router = express.Router();
 const { getDb } = require('../db/schema');
 const { analyzeImage } = require('../services/imageAnalyzer');
+const { scrapeEventFromUrl, parseEventFromPdf } = require('../services/eventSubmission');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 /**
  * GET /api/events
@@ -107,6 +111,142 @@ router.get('/:id', (req, res) => {
     .all(event.id);
 
   res.json({ ...event, participants });
+});
+
+/**
+ * POST /api/events/from-url
+ * Scrape (or URL-parse) event details from a URL and save the event.
+ * Accepts: { url: string }
+ */
+router.post('/from-url', async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'url is required' });
+
+  let eventData;
+  try {
+    eventData = await scrapeEventFromUrl(url);
+  } catch (err) {
+    return res.status(502).json({ error: `Failed to fetch URL: ${err.message}` });
+  }
+
+  if (!eventData) {
+    return res.status(422).json({
+      error: 'No events could be identified from this URL. Try using the form to enter event details manually.',
+    });
+  }
+
+  const db = getDb();
+
+  // Use upsert when source_id is present (same URL shouldn't create duplicates)
+  const stmt = eventData.source_id
+    ? db.prepare(`
+        INSERT INTO events
+          (source, source_id, title, artist, venue, city, date, time,
+           price_min, price_max, price_text, genre, ticket_url, image_url, description)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(source, source_id) DO UPDATE SET
+          title = excluded.title,
+          artist = excluded.artist,
+          venue = excluded.venue,
+          city = excluded.city,
+          date = excluded.date,
+          time = excluded.time,
+          price_min = excluded.price_min,
+          price_max = excluded.price_max,
+          price_text = excluded.price_text,
+          genre = excluded.genre,
+          ticket_url = excluded.ticket_url,
+          image_url = excluded.image_url,
+          description = excluded.description,
+          scraped_at = datetime('now')
+      `)
+    : db.prepare(`
+        INSERT INTO events
+          (source, source_id, title, artist, venue, city, date, time,
+           price_min, price_max, price_text, genre, ticket_url, image_url, description)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+  const info = stmt.run(
+    eventData.source || 'manual',
+    eventData.source_id || null,
+    eventData.title,
+    eventData.artist || null,
+    eventData.venue,
+    eventData.city || 'Vancouver',
+    eventData.date || null,
+    eventData.time || null,
+    eventData.price_min ?? null,
+    eventData.price_max ?? null,
+    eventData.price_text || null,
+    eventData.genre || null,
+    eventData.ticket_url || null,
+    eventData.image_url || null,
+    eventData.description || null,
+  );
+
+  let event = null;
+  if (info.lastInsertRowid) {
+    event = db.prepare('SELECT * FROM events WHERE id = ?').get(info.lastInsertRowid);
+  }
+  if (!event && eventData.source_id) {
+    event = db
+      .prepare('SELECT * FROM events WHERE source = ? AND source_id = ?')
+      .get(eventData.source || 'manual', eventData.source_id);
+  }
+
+  res.status(201).json(event || eventData);
+});
+
+/**
+ * POST /api/events/from-pdf
+ * Upload a PDF (or other document) and extract event details from its text.
+ * Accepts: multipart/form-data with field "file"
+ */
+router.post('/from-pdf', upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'file is required' });
+
+  let eventData;
+  try {
+    eventData = await parseEventFromPdf(req.file.buffer);
+  } catch (err) {
+    return res.status(500).json({ error: `Failed to parse file: ${err.message}` });
+  }
+
+  if (!eventData) {
+    return res.status(422).json({
+      error: 'No events could be identified in this document. Try using the form to enter event details manually.',
+    });
+  }
+
+  const db = getDb();
+  const stmt = db.prepare(`
+    INSERT INTO events
+      (source, source_id, title, artist, venue, city, date, time,
+       price_min, price_max, price_text, genre, ticket_url, image_url, description)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const info = stmt.run(
+    'manual',
+    null,
+    eventData.title,
+    eventData.artist || null,
+    eventData.venue,
+    eventData.city || 'Vancouver',
+    eventData.date || null,
+    eventData.time || null,
+    null,
+    null,
+    null,
+    eventData.genre || null,
+    null,
+    null,
+    eventData.description || null,
+  );
+
+  const event = db.prepare('SELECT * FROM events WHERE id = ?').get(info.lastInsertRowid);
+  res.status(201).json(event);
 });
 
 /**
