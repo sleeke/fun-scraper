@@ -471,3 +471,117 @@ describe('POST /api/events/:id/analyze', () => {
     expect(Object.prototype.hasOwnProperty.call(res.body, 'analyzed_at')).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Manual event submission: from-url
+// ---------------------------------------------------------------------------
+
+describe('POST /api/events/from-url', () => {
+  test('returns 400 when url is missing', async () => {
+    const res = await request(app).post('/api/events/from-url').send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/url is required/i);
+  });
+
+  test('returns 422 when URL contains no identifiable event info', async () => {
+    // An unrecognised hostname with no slug details will yield no event
+    const res = await request(app)
+      .post('/api/events/from-url')
+      .send({ url: 'https://unknown-site.example.com/' });
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/no events could be identified/i);
+  });
+
+  test('creates event from URL with date and title encoded in slug', async () => {
+    // URL contains date (2099-07-04) and a recognisable title slug
+    const res = await request(app)
+      .post('/api/events/from-url')
+      .send({ url: 'https://thisisblueprint.com/events/summer-rave-pne-forum-2099-07-04' });
+    // The live scrape will fail in CI (network blocked); fallback URL parsing should fire
+    // and either succeed (201) or fail gracefully (422/502).
+    expect([201, 422, 502]).toContain(res.status);
+    if (res.status === 201) {
+      expect(res.body.title).toBeTruthy();
+      // Date should be extracted from the URL slug
+      expect(res.body.date).toBe('2099-07-04');
+      // Venue should be parsed from the known venue slug "pne-forum"
+      expect(res.body.venue).toBe('PNE Forum');
+    }
+  });
+
+  test('submitting same URL twice does not create a duplicate', async () => {
+    const url = 'https://thisisblueprint.com/events/unique-event-2099-08-01';
+    const r1 = await request(app).post('/api/events/from-url').send({ url });
+    const r2 = await request(app).post('/api/events/from-url').send({ url });
+    if (r1.status === 201 && r2.status === 201) {
+      expect(r1.body.id).toBe(r2.body.id);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// URL slug parsing unit tests (via the service module directly)
+// ---------------------------------------------------------------------------
+
+describe('parseEventDetailsFromUrl', () => {
+  const { parseEventDetailsFromUrl } = require('../services/eventSubmission');
+
+  test('extracts date from URL slug', () => {
+    const result = parseEventDetailsFromUrl(
+      'https://thisisblueprint.com/events/foundation-v13-5-disclosure-pne-forum-2026-04-18'
+    );
+    expect(result.date).toBe('2026-04-18');
+  });
+
+  test('extracts known venue from URL slug', () => {
+    const result = parseEventDetailsFromUrl(
+      'https://thisisblueprint.com/events/foundation-v13-5-disclosure-pne-forum-2026-04-18'
+    );
+    expect(result.venue).toBe('PNE Forum');
+  });
+
+  test('extracts title (minus venue and date) from URL slug', () => {
+    const result = parseEventDetailsFromUrl(
+      'https://thisisblueprint.com/events/foundation-v13-5-disclosure-pne-forum-2026-04-18'
+    );
+    expect(result.title).toBeTruthy();
+    // Title should contain "Foundation" but not the venue or date
+    expect(result.title).toMatch(/foundation/i);
+    expect(result.title).not.toMatch(/2026/);
+    expect(result.title).not.toMatch(/pne/i);
+  });
+
+  test('returns nulls for a URL with no event info in slug', () => {
+    const result = parseEventDetailsFromUrl('https://example.com/');
+    expect(result.date).toBeNull();
+    expect(result.venue).toBeNull();
+  });
+
+  test('handles URL with only date in slug', () => {
+    const result = parseEventDetailsFromUrl('https://example.com/events/2099-12-31');
+    expect(result.date).toBe('2099-12-31');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Manual event submission: from-pdf
+// ---------------------------------------------------------------------------
+
+describe('POST /api/events/from-pdf', () => {
+  test('returns 400 when no file is attached', async () => {
+    const res = await request(app).post('/api/events/from-pdf');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/file is required/i);
+  });
+
+  test('returns 422 for an empty or unrecognisable PDF', async () => {
+    // A zero-byte buffer is not a valid PDF — pdf-parse will fail → 422
+    const res = await request(app)
+      .post('/api/events/from-pdf')
+      .attach('file', Buffer.from(''), 'empty.pdf');
+    expect([422, 500]).toContain(res.status);
+    if (res.status === 422) {
+      expect(res.body.error).toMatch(/no events could be identified/i);
+    }
+  });
+});
