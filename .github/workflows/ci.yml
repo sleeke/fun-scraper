@@ -22,8 +22,16 @@ jobs:
       - name: Install backend dependencies
         run: npm --prefix backend install
 
-      - name: Run backend tests
-        run: npm --prefix backend test
+      - name: Run backend tests (unit)
+        run: npm --prefix backend test -- --testPathIgnorePatterns=ticketmaster.integration
+
+      - name: Run Ticketmaster integration tests
+        # Skipped automatically when the secret is absent (forks, contributors).
+        # Add TICKETMASTER_API_KEY in Settings → Secrets and variables → Actions
+        # to enable this step.
+        env:
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+        run: npm --prefix backend test -- --testPathPatterns=ticketmaster.integration
 
   frontend-build:
     name: Frontend lint & build
