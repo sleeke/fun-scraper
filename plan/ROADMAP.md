@@ -2,6 +2,9 @@
 
 ### High Priority
 
+#### Career directive
+- Made a decision: DO NOT WORK ON THIS PROJECT unless there's a blocker on the main focus (career), or if there's a chance to parallel process.
+
 #### Improved scraping performance
 
 - Some sites don't allow scraping, and the scraper gets blocked. Implementing a more robust scraping strategy that can bypass these blocks (e.g., using proxies, rotating user agents) would improve the reliability of the scraper and ensure that it can retrieve event data from a wider range of sources.
