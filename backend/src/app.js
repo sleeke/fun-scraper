@@ -11,6 +11,7 @@ const rateLimit = require('express-rate-limit');
 const eventsRouter = require('./routes/events');
 const participantsRouter = require('./routes/participants');
 const scrapeRouter = require('./routes/scrape');
+const contributeRouter = require('./routes/contribute');
 
 const app = express();
 
@@ -71,6 +72,7 @@ app.get('/', (_req, res) => res.redirect('/api/health'));
 app.use('/api/events', eventsRouter);
 app.use('/api/events/:eventId/participants', participantsRouter);
 app.use('/api/scrape', scrapeRouter);
+app.use('/api/contribute', contributeRouter);
 
 // Error handler
 app.use((err, _req, res, _next) => {

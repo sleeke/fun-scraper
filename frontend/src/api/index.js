@@ -42,4 +42,20 @@ export const api = {
   // Image analysis
   analyzeEvent: (eventId) =>
     request(`/events/${eventId}/analyze`, { method: 'POST' }),
+
+  // Contribute
+  contributeForm: (data) =>
+    request('/contribute/form', { method: 'POST', body: JSON.stringify(data) }),
+
+  contributeUrl: (urls) =>
+    request('/contribute/url', { method: 'POST', body: JSON.stringify({ urls }) }),
+
+  contributeFile: (formData) =>
+    fetch(`${BASE}/contribute/file`, { method: 'POST', body: formData }).then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      return res.json();
+    }),
 };
