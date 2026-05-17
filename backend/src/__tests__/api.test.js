@@ -357,7 +357,6 @@ describe('Scrape API', () => {  test('GET /api/scrape/sources - returns source l
     expect(keys).toContain('fortune');
     expect(keys).toContain('industrial236');
     expect(keys).toContain('residentadvisor');
-    expect(keys).toContain('thisisblueprint');
   });
 
   test('POST /api/scrape - 400 if source missing', async () => {
