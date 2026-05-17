@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';import { Search, Users, ChevronLeft, ChevronRight, Music2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';import { Search, Users, Music2 } from 'lucide-react';
 import { api } from './api';
 import EventCard from './components/EventCard';
 import EventDetail from './components/EventDetail';
@@ -26,6 +26,8 @@ export default function App() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState('');
   const [genre, setGenre] = useState('');
   const [source, setSource] = useState('');
@@ -34,17 +36,21 @@ export default function App() {
   const { toasts, addToast } = useToast();
   const searchTimer = useRef(null);
   const gridRef = useRef(null);
+  const loadMoreRef = useRef(null);
   const [mobileActiveId, setMobileActiveId] = useState(null);
 
   const fetchEvents = useCallback(
     async (opts = {}) => {
-      setLoading(true);
+      const pageToLoad = opts.page ?? 1;
+      const append = opts.append ?? false;
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       try {
         const params = {
           search: opts.search ?? search,
           genre: opts.genre ?? genre,
           source: opts.source ?? source,
-          page: opts.page ?? page,
+          page: pageToLoad,
           limit: PAGE_SIZE,
           ...(((opts.interestedOnly ?? interestedOnly)) ? { has_participants: 'true' } : {}),
         };
@@ -53,15 +59,18 @@ export default function App() {
         // Trust the server's response directly — a client-side UTC filter would
         // cause a date mismatch and make the last page appear to have fewer events
         // than the pagination total implies.
-        setEvents(data.events);
+        setEvents((prev) => (append ? [...prev, ...data.events] : data.events));
         setTotal(data.total);
+        setPage(pageToLoad);
+        setHasMore(pageToLoad * PAGE_SIZE < data.total);
       } catch (err) {
         addToast('Failed to load events: ' + err.message, 'error');
       } finally {
+        if (append) setLoadingMore(false);
         setLoading(false);
       }
     },
-    [search, genre, source, page, interestedOnly, addToast]
+    [search, genre, source, interestedOnly, addToast]
   );
 
   // Initial load
@@ -70,22 +79,36 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-fetch when filters/page change (debounce search)
+  // Re-fetch when filters change (debounce search)
   useEffect(() => {
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => {
+      setEvents([]);
       setPage(1);
+      setHasMore(true);
       fetchEvents({ page: 1, search, genre, source, interestedOnly });
     }, 300);
     return () => clearTimeout(searchTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, genre, source, interestedOnly]);
 
-  // Re-fetch on page change
+  // Infinite scrolling: load next page when sentinel enters viewport
   useEffect(() => {
-    fetchEvents({ page });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+    const sentinel = loadMoreRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !loading && !loadingMore) {
+          fetchEvents({ page: page + 1, append: true });
+        }
+      },
+      { rootMargin: '180px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchEvents, hasMore, loading, loadingMore, page]);
 
   // Mobile: activate the first fully-visible card after 1.5s dwell; deactivate all others
   useEffect(() => {
@@ -157,8 +180,6 @@ export default function App() {
     );
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
   return (
     <div className="app">
       <nav className="navbar">
@@ -217,24 +238,10 @@ export default function App() {
           </div>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="pagination">
-            <button
-              className="btn btn-ghost"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              <ChevronLeft size={16} strokeWidth={2} /> Prev
-            </button>
-            <span>Page {page} of {totalPages}</span>
-            <button
-              className="btn btn-ghost"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next <ChevronRight size={16} strokeWidth={2} />
-            </button>
+        <div ref={loadMoreRef} className="infinite-scroll-sentinel" aria-hidden />
+        {loadingMore && (
+          <div className="infinite-scroll-loading" role="status" aria-live="polite">
+            <span className="spinner" /> Loading more events…
           </div>
         )}
       </main>
