@@ -21,6 +21,7 @@ const { interceptApiResponse, fetchPageRendered } = require('./browser');
 const SOURCE = 'residentadvisor';
 const DEFAULT_URL = 'https://ra.co/events/ca/vancouver';
 const RA_GRAPHQL = 'https://ra.co/graphql';
+const VANCOUVER_FALLBACK_AREA_ID = 39;
 
 // ---------------------------------------------------------------------------
 // Error formatting helpers
@@ -429,20 +430,17 @@ async function scrapeViaSlug(slug, cookieHeader) {
 async function scrapeViaApi(pageUrl) {
   const cookieHeader = await seedCookies();
 
-  // 1a. Numeric area ID (GET_EVENT_LISTINGS) – only attempt this when we can
-  //     reliably determine the Vancouver area ID from the RA events page itself.
-  //     We do NOT fall back to hard-coded guesses because an incorrect ID will
-  //     silently return events for the wrong city (e.g. London area 13).
+  // 1a. Numeric area ID (GET_EVENT_LISTINGS)
   const extractedId = await lookupAreaId(pageUrl, cookieHeader);
-  if (extractedId) {
-    try {
-      const events = await scrapeViaNumericAreaId(extractedId, cookieHeader);
-      if (events.length > 0) return events;
-    } catch (err) {
-      console.warn(formatError(err, 'graphql-numeric', `${RA_GRAPHQL} (area=${extractedId})`));
-    }
-  } else {
-    console.warn('[ra:graphql-numeric] Could not extract area ID from page – skipping numeric area ID strategy to avoid wrong-city results');
+  const numericAreaId = extractedId || VANCOUVER_FALLBACK_AREA_ID;
+  if (!extractedId) {
+    console.warn(`[ra:graphql-numeric] Could not extract area ID from page – using Vancouver fallback area ID ${VANCOUVER_FALLBACK_AREA_ID}`);
+  }
+  try {
+    const events = await scrapeViaNumericAreaId(numericAreaId, cookieHeader);
+    if (events.length > 0) return events;
+  } catch (err) {
+    console.warn(formatError(err, 'graphql-numeric', `${RA_GRAPHQL} (area=${numericAreaId})`));
   }
 
   // 1b. Slug-based (GET_DEFAULT_EVENTS_LISTING)
@@ -651,5 +649,4 @@ async function scrape(url = DEFAULT_URL) {
 }
 
 module.exports = { scrape, SOURCE, DEFAULT_URL };
-
 
