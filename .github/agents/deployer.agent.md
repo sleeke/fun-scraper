@@ -25,7 +25,9 @@ Before running any deployment, you must discover the project's deployment proces
    - **Build command** (e.g. `npm run build`, `cargo build --release`, `go build`)
    - **Deploy command** (e.g. `npm run deploy`, a deploy script, `terraform apply`)
    - **Hosting platform** and how to verify successful deployment
-   - **Live URL** pattern or where to find it after deployment
+   - **Deployment artefact** — how to identify and verify the deployed output
+     (e.g. live URL for web apps, registry URL for container images, package URL for
+     libraries, download path for binaries)
 3. If a deploy command or script doesn't exist, report that to the caller.
 
 ---
@@ -65,7 +67,7 @@ Phases vary by project. Discover the actual phases from the project configuratio
    - Default / `--skip-local`: Run only build + deploy (skip local tests).
    - `--full`: Run the complete pipeline including local tests.
 3. Run the deployment command and capture all output.
-4. Record: exit code, failing phase (if any), deployed URL.
+4. Record: exit code, failing phase (if any), deployment artefact reference.
 5. Mark as **completed**.
 
 ### Phase 2 — Report results
@@ -75,7 +77,7 @@ Phases vary by project. Discover the actual phases from the project configuratio
 ```
 ## Deployment successful
 
-**Live URL:** <deployed URL>
+**Deployment artefact:** <URL, package reference, image tag, or file path>
 
 ### Pipeline summary
 | Phase | Status |
@@ -86,12 +88,14 @@ Phases vary by project. Discover the actual phases from the project configuratio
 | Verification | ✔ Passed |
 
 ### Recommendations
-- Verify the live URL in a browser.
+- For web deployments: verify the live URL in a browser.
 - If CDN caches stale content, hard refresh (Ctrl+Shift+R / Cmd+Shift+R).
+- For packages: verify the published version with your package manager.
+- For container images: verify with `docker pull` or your registry console.
 ```
 
-After reporting success, open the live URL in a browser and capture a screenshot of
-the home page as visual proof of the deployment. Embed the screenshot in your report.
+For web deployments, open the URL in a browser and capture a screenshot of
+the home page as visual proof. Embed the screenshot in your report.
 
 **On failure (non-zero exit):**
 
@@ -126,7 +130,7 @@ the home page as visual proof of the deployment. Embed the screenshot in your re
 ## What to report
 
 - Exit code of the deployment command.
-- Live URL (on success).
+- Deployment artefact reference (URL, package version, image tag, or file path) on success.
 - Failing phase and error output (on failure).
 - Pipeline phase summary table.
-- Screenshot of the deployed site (on success), as visual proof the deploy is live.
+- Screenshot or verification proof of the deployed output (on success).

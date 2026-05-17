@@ -208,6 +208,16 @@ if it does not exist). Use the template below exactly. Populate every section; w
 
 ---
 
+## Review Area 6 — Security
+
+**Standard:** Load the **security-audit skill** (`.github/skills/security-audit/SKILL.md`)
+and apply the OWASP Top 10 checklist and secret detection scan to the full codebase.
+
+### Findings
+...
+
+---
+
 ## Recommended priority order
 
 List the top five findings (by real-world impact) with a one-line rationale for each.

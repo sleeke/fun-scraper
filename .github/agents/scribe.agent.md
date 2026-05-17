@@ -110,7 +110,7 @@ folder, such as scripts that need flags or generators that produce output.>
 - **Folder name** as an H1 heading.
 - **Summary sentence** explains the folder's purpose within the overall project.
 - **Files table** lists every file in the folder (excluding `README.md` itself and
-  hidden files like `.DS_Store`). Sort alphabetically. Every file/folder name is a
+  OS-specific hidden files (e.g. `.DS_Store` on macOS, `Thumbs.db` on Windows)). Sort alphabetically. Every file/folder name is a
   relative markdown link.
 - **Purpose column** — plain English. First-mention jargon gets a markdown hyperlink
   to official documentation.

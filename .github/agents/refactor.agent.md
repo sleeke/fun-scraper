@@ -190,12 +190,12 @@ _Skip if report-only / audit-only mode._
 1. Mark as **in-progress**.
 2. Invoke **deployer** with:
    - Instruction: "Deploy using `--skip-local` — CI gates were verified. Report the
-     live URL."
+     deployment artefact."
 3. If deploy fails:
    a. Recoverable infra issue — fix directly and re-invoke deployer.
    b. Build/test regression — invoke quality-gate to diagnose, then loop.
    c. Cap deploy retries at **2**.
-4. Record the live URL.
+4. Record the deployment artefact reference.
 5. Mark as **completed**.
 
 ### Phase 9 — Learning
@@ -203,8 +203,8 @@ _Skip if report-only / audit-only mode._
 1. Mark as **in-progress**.
 2. Invoke **mentor** with:
    - Instruction: "Analyse this analysis & remediation session. Extract lessons for
-     all agents that participated. Operate in apply mode — edit agent instruction
-     files directly with any improvements discovered."
+     all agents that participated. Operate in report mode — produce a suggestions
+     report only. Do not edit any agent instruction files."
 3. Mark as **completed**.
 
 ### Phase 10 — Handoff
@@ -216,7 +216,7 @@ Provide a completion summary:
 - **Verification**: remaining issues after review, review cycles used.
 - **CI status**: final exit codes for all gates (or "skipped" if report-only).
 - **Documentation**: folders updated by scribe, README changes (or "skipped" if report-only).
-- **Deployment**: live URL (or "skipped" if report-only).
+- **Deployment**: deployment artefact (or "skipped" if report-only).
 - **Learning**: improvements applied to agent instructions (from mentor).
 - **Blockers encountered**: issues and how they were resolved.
 

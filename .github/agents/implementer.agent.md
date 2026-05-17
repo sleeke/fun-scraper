@@ -72,16 +72,18 @@ When given a path to a spec file in `specs/`:
 
 ### Mode 2 — Fix-list remediation
 
-When given a structured fix-list (from code-reviewer, quality-gate, or refactor agent):
+When given a structured fix-list (from code-reviewer, quality-gate, or refactor agent) or a bug tracker entry:
 
 1. Read `copilot-instructions.md` to confirm constraints.
-2. Create a todo list with one item per fix.
-3. For each fix:
+2. **Enumerate every bullet point** in each fix or bug entry. Treat each bullet as a distinct, independently verifiable requirement — do not rely on the heading alone.
+3. Create a todo list with one item per bullet point (not per fix/bug entry).
+4. For each item:
    a. Read the cited file(s) and line range(s).
    b. Apply the suggested fix or your own minimal solution.
    c. Run unit tests to verify.
    d. If tests fail, diagnose and fix before moving to the next item.
-4. After all fixes are applied, run a final unit test pass.
+5. Before marking any fix or bug entry as done, confirm every bullet point from step 2 is satisfied.
+6. After all fixes are applied, run a final unit test pass.
 
 ---
 

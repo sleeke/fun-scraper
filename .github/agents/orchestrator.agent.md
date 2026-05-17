@@ -38,6 +38,7 @@ in the Tier 2 workflow agents you delegate to.
               │  scribe                    │
               │  deployer                  │
               │  mentor                    │
+              │  init                      │  ← also invoked as pre-flight
               └────────────────────────────┘
 ```
 
@@ -58,9 +59,16 @@ Parse the user's prompt and select the workflow agent:
 
 | Trigger (present in prompt) | Route to |
 |---|---|
+| "init", "initialise", "initialize", "scaffold", "set up the project", "bootstrap" | **init** |
+| "fix", "bug", "broken", "regression", "doesn't work", "not working", "issue #", "error:", "crash", "failing test" | **bug-fix** |
 | "analyse", "analyze", "review", "audit", "health check", "refactor", `scope:`, `focus:` | **refactor** |
 | "release", "deploy to production", "deploy to prod", "changelog", "version bump" | **release-manager** |
 | Requirement text, spec file path, "implement", "build", "add", "create", plan/ROADMAP.md reference, or no trigger words | **feature-delivery** |
+
+**Routing priority:** bug-fix triggers take precedence over feature-delivery. If both a
+bug-fix trigger and a feature trigger are present (e.g. "fix the broken login and add
+rate limiting"), route the fix to **bug-fix** first, then invoke **feature-delivery**
+for the new feature.
 
 If both analysis and feature triggers are present (e.g. "review and then implement the
 dark-mode toggle"), invoke **refactor** first scoped to the relevant area, then invoke
@@ -81,8 +89,17 @@ When the user includes scope parameters, pass them through verbatim to the workf
 
 ## Execution
 
+### Step 0 — Pre-flight scaffolding check
+
+Before routing, check whether `.github/copilot-instructions.md` exists.
+- If it **does not exist**: invoke the **init** agent first. Wait for it to complete
+  before proceeding to routing. This ensures all agents have the context they need.
+- If it **exists**: skip this step and proceed immediately to routing.
+
+### Steps 1–5
+
 1. Read the user's prompt.
-2. Match against the routing table above.
+2. Match against the routing table above (apply priority order top-to-bottom).
 3. Invoke the selected workflow agent with:
    - The full user prompt text.
    - Any scope/target/focus parameters extracted.
@@ -99,12 +116,19 @@ You do not retry, fix code, or make architectural decisions. You route and relay
 
 | User says | Routes to | Parameters passed |
 |---|---|---|
+| "Initialise this project" | init | — |
+| "Set up the project scaffolding" | init | — |
 | "Add rate limiting to the contact API" | feature-delivery | requirement text |
 | "Implement specs/improve-the-main-page.md" | feature-delivery | spec file path |
 | "Process prepared requirements" | feature-delivery | plan/ROADMAP.md reference |
+| "Fix the broken login form" | bug-fix | defect description |
+| "The payment flow is crashing" | bug-fix | defect description |
+| "Fix issue #42" | bug-fix | issue reference |
 | "Analyse the codebase" | refactor | scope:project (default) |
 | "Review scope:file target:components/NavBar.tsx" | refactor | scope:file, target:… |
 | "Audit focus:RSC boundaries report-only" | refactor | focus:…, report-only |
 | "Refactor the content layer" | refactor | free-text target |
 | "Deploy to production" | release-manager | — |
+| "Release version 2.1.0" | release-manager | — |
 | "Review ContactForm and add rate limiting" | refactor → feature-delivery | scoped review, then requirement |
+| "Fix the null pointer crash and add retry logic" | bug-fix → feature-delivery | defect first, then requirement |

@@ -43,7 +43,7 @@ Your delegates:
 
 ## Execution workflow
 
-### Phase 0 — Intake & orientation
+### Phase 0 — Intake, orientation & triage
 
 1. Read `.github/copilot-instructions.md` to internalise project constraints.
 2. **Resolve the requirement source** using priority order:
@@ -51,24 +51,40 @@ Your delegates:
    - **Priority 2 — Referenced file.** Named file → read and use its contents. If it is
      already a spec file in `specs/`, skip Phase 1 entirely.
    - **Priority 3 — plan/ROADMAP.md fallback.** Extract items under `## Prepared requirements`.
-3. Create the todo list:
-   - Resolve requirements
-   - Spec expansion
-   - Implementation
-   - Code review
-   - Quality gate
-   - Documentation (scribe)
-   - Deployment
-   - Learning (mentor)
-4. If requirements are clear and unambiguous, proceed without asking for confirmation.
+3. **Classify complexity** to determine the pipeline configuration:
 
-### Phase 1 — Spec expansion
+   | Class | Signals | Pipeline adjustment |
+   |-------|---------|---------------------|
+   | **trivial** | Single-file change, self-evident intent, no new tests, no architectural impact (e.g. wording change, simple config update). | Skip Phase 1 (spec-expander). Skip Phase 3 (code-reviewer). |
+   | **standard** | Well-defined feature or change with clear acceptance criteria. No cross-system impact. | Full pipeline. |
+   | **complex** | Architectural impact, multiple systems affected, significant scope uncertainty, or touches a core integration. | Insert architect analysis before Phase 1. Architect assesses impact and flags constraints for spec-expander. |
+
+   If the classification is ambiguous, default to **standard**.
+
+4. Create the todo list based on the complexity class:
+   - **trivial:** Intake & triage, Implementation, Quality gate, Documentation, Deployment, Learning
+   - **standard:** Intake & triage, Spec expansion, Spec review, Implementation, Code review, Quality gate, Documentation, Deployment, Learning
+   - **complex:** Intake & triage, Architect pre-check, Spec expansion, Spec review, Implementation, Code review, Quality gate, Documentation, Deployment, Learning
+
+### Phase 0.5 — Architect pre-check _(complex only — skip for trivial and standard)_
+
+1. Mark as **in-progress**.
+2. Invoke **architect** with:
+   - `focus:<the area affected by the requirement>`.
+   - Instruction: "Analyse the architectural impact of this requirement. Identify
+     constraints, risk areas, and any patterns the spec-expander must follow.
+     Report findings for spec-expander input — do not produce a full audit report."
+3. Read the findings and extract constraint notes to pass to spec-expander in Phase 1.
+4. Mark as **completed**.
+
+### Phase 1 — Spec expansion _(skip for trivial)_
 
 1. Mark as **in-progress**.
 2. Invoke **spec-expander** with the full requirement text and any context gathered.
    Include:
    - The exact requirement bullets or prose.
    - Any relevant file paths or current-behaviour observations.
+   - Architect constraint notes (if Phase 0.5 was run).
    - Instruction: "Write the spec to `specs/<slug>.md` and report: file path, acceptance
      criteria count, flagged decisions."
 3. **Validate** the output:
@@ -78,7 +94,19 @@ Your delegates:
       Implementation notes, Out of scope).
    c. Confirm acceptance criteria are testable — each has a clear Given/When/Then.
    d. If invalid, re-invoke spec-expander with specific feedback on what is missing.
-4. Mark as **completed** and note the spec file path.
+4. **Human checkpoint — spec review.** Present the spec summary and ask for confirmation
+   using `vscode_askQuestions` before proceeding:
+   - Question: "The spec is ready. Does it match your intent?"
+   - Options:
+     - "Yes — proceed to implementation" _(recommended)_
+     - "Needs revision — enter your feedback below"
+     - "Cancel this workflow"
+   - If the user selects "Needs revision", re-invoke spec-expander with the user's
+     feedback appended to the original requirement. Return to step 3. Repeat until
+     the user confirms or cancels.
+   - If the user selects "Cancel", stop the workflow and report what spec file was
+     generated (it remains in `specs/` for future use).
+5. Mark as **completed** and note the spec file path.
 
 ### Phase 2 — Implementation
 
@@ -91,7 +119,7 @@ Your delegates:
 3. When the implementer completes, record the list of changed files for Phase 3.
 4. Mark as **completed**.
 
-### Phase 3 — Code review
+### Phase 3 — Code review _(skip for trivial)_
 
 1. Mark as **in-progress**.
 2. Invoke **code-reviewer** scoped to the changed files:
@@ -141,15 +169,23 @@ Your delegates:
 ### Phase 6 — Deployment
 
 1. Mark as **in-progress**.
-2. Invoke **deployer** with instruction: "Deploy using `--skip-local` — CI gates were
-   verified by quality-gate. Report the live URL and pipeline summary."
+2. **Human checkpoint — deployment approval.** Before deploying, ask the user for
+   approval using `vscode_askQuestions`:
+   - Question: "All CI gates are green. Ready to deploy?"
+   - Options:
+     - "Yes — deploy now" _(recommended)_
+     - "No — skip deployment (I'll deploy manually)"
+   - If the user selects "No", skip to Phase 7. Record "Deployment skipped by user"
+     in the summary.
+3. Invoke **deployer** with instruction: "Deploy using `--skip-local` — CI gates were
+   verified by quality-gate. Report the deployment artefact and pipeline summary."
 3. If the deployer reports a failure:
    a. **Recoverable infra issue** (auth, missing binary) → fix directly (install,
       `firebase login`, etc.) and re-invoke deployer.
    b. **Build regression** → invoke **quality-gate** to diagnose; quality-gate will
       loop with implementer to fix. Then re-invoke deployer.
    c. Cap deploy retries at **2**. If still failing, report to the user.
-4. Record the live URL.
+4. Record the deployment artefact reference.
 5. Mark as **completed**.
 
 ### Phase 7 — Learning
@@ -157,11 +193,16 @@ Your delegates:
 1. Mark as **in-progress**.
 2. Invoke **mentor** with instruction: "Analyse this feature delivery session. Extract
    lessons for all agents that participated (spec-expander, implementer, code-reviewer,
-   quality-gate, scribe, deployer). Operate in apply mode — edit agent instruction files
-   directly with any improvements discovered. Report what was changed."
+   quality-gate, scribe, deployer). Operate in report mode — produce a suggestions report
+   only. Do not edit any agent instruction files."
 3. Mark as **completed**.
 
 ### Phase 8 — Handoff
+
+**Spec archival.** Before summarising, archive any spec files generated during this
+workflow to keep `specs/` uncluttered:
+1. Create `specs/archive/` if it does not exist.
+2. Move each spec generated in Phase 1: `specs/<slug>.md` → `specs/archive/<slug>.md`.
 
 Provide a completion summary to the user:
 
@@ -170,10 +211,9 @@ Provide a completion summary to the user:
 - **Code review**: finding counts, critical issues fixed.
 - **CI status**: final exit codes for each CI gate.
 - **Documentation**: folders updated by scribe, files added/removed from README tables.
-- **Deployment**: live URL.
-- **UI proof**: if any visual/UI change was made, include a browser screenshot of the
-  affected page at the deployed (or dev-server) URL. Start the dev server or use the
-  live URL from Phase 6, navigate to the changed page, capture a screenshot, and embed
+- **Deployment**: deployment artefact (URL, package version, image tag, or file path).
+- **UI proof**: if a visual/UI change was made for a web project, include a browser screenshot of the
+  affected page. Start the dev server or use the deployment URL from Phase 6, navigate to the changed page, capture a screenshot, and embed
   it in this summary.
 - **Learning**: improvements applied to agent instructions (from mentor).
 - **Blockers encountered**: issues hit and how they were resolved.

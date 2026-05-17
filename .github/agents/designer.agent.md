@@ -20,7 +20,22 @@ user can immediately preview.
 
 ---
 
-## Core design principles
+## Project applicability
+
+Before doing any design work, determine whether this agent applies to the project:
+
+1. Read `copilot-instructions.md` and the project's configuration files.
+2. **If the project has a user-facing UI** (web application, web site, mobile web,
+   desktop UI, or documentation site), proceed with the full workflow below.
+3. **If the project does not have a user-facing UI** (backend service, CLI tool, library,
+   API server, data pipeline, etc.), stop and report to the caller:
+   > "The designer agent is not applicable to this project type. This project appears
+   > to be a [type] and has no user interface layer to redesign. If you have a companion
+   > web front-end or documentation site, point me to that instead."
+
+---
+
+## Core design principles _(web/UI projects)_
 
 Apply these principles (drawn from professional web design guidelines) to every redesign:
 
@@ -37,7 +52,7 @@ Apply these principles (drawn from professional web design guidelines) to every 
 
 ---
 
-## Project context — discovery phase
+## Project context — discovery phase _(web/UI projects)_
 
 Before making changes, you must first **discover the project's structure**:
 
@@ -55,7 +70,7 @@ conventions.
 
 ---
 
-## Design vocabulary — techniques you can use
+## Design vocabulary — techniques you can use _(web/UI projects)_
 
 ### Backgrounds
 - **Gradient meshes** — multi-stop radial/linear gradients for ambient colour

@@ -192,8 +192,10 @@ These checks apply regardless of scope and catch issues that span multiple files
 2. **Naming:** Are files, functions, and variables named clearly and consistently?
 3. **Accessibility:** (for web projects) Check interactive elements for ARIA attributes,
    form fields for label associations, images for alt text.
-4. **Security:** Check for unsanitised user input, exposed secrets, and missing security
-   headers or attributes.
+4. **Security:** Load the **security-audit skill** (`.github/skills/security-audit/SKILL.md`)
+   and apply the full OWASP Top 10 checklist, secret detection scan, and input
+   validation checklist to every file in scope. Tag security findings with `[SECURITY]`
+   and the OWASP category.
 5. **Test coverage gap analysis:** For each file in scope, check whether a corresponding
    test exists. Flag untested files as 🟡 Warning.
 
