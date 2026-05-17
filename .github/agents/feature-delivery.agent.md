@@ -1,9 +1,9 @@
 ---
 name: feature-delivery
 description: 
-  Tier 2 workflow agent for end-to-end feature delivery. Takes a requirement — from the prompt, a referenced file, or plan/ROADMAP.md — and drives it through spec expansion, implementation, code review, quality gating, deployment, and learning. Coordinates Tier 3 specialists: spec-expander, implementer, code-reviewer, quality-gate, deployer, and mentor.
+  Tier 2 workflow agent for end-to-end feature delivery. Takes a requirement — from the prompt, a referenced file, or ROADMAP.md — and drives it through spec expansion, implementation, code review, quality gating, deployment, and learning. Coordinates Tier 3 specialists: spec-expander, implementer, code-reviewer, quality-gate, deployer, and mentor.
 argument-hint: 
-  Pass requirement text directly, a path to a requirements/spec file, or a plan/ROADMAP.md heading reference. Omit to process all items under "## Prepared requirements" in plan/ROADMAP.md.
+  Pass requirement text directly, a path to a requirements/spec file, or a ROADMAP.md heading reference. Omit to process all items under "## Prepared requirements" in ROADMAP.md.
 tools: ['vscode', 'execute', 'read', 'agent', 'edit', 'search', 'todo']
 ---
 
@@ -21,7 +21,7 @@ Your delegates:
 | **implementer** | Spec → working code + tests |
 | **code-reviewer** | Post-implementation review of changed files |
 | **quality-gate** | Full CI verification with automatic feedback loop to implementer |
-| **deployer** | Deployment to hosting platform |
+| **deployer** | Firebase preview deployment |
 | **scribe** | Updates per-folder README documentation for changed files |
 | **mentor** | Post-workflow learning extraction and agent instruction improvement |
 
@@ -50,7 +50,7 @@ Your delegates:
    - **Priority 1 — Prompt content.** Requirement text in the prompt → use directly.
    - **Priority 2 — Referenced file.** Named file → read and use its contents. If it is
      already a spec file in `specs/`, skip Phase 1 entirely.
-   - **Priority 3 — plan/ROADMAP.md fallback.** Extract items under `## Prepared requirements`.
+   - **Priority 3 — ROADMAP.md fallback.** Extract items under `## Prepared requirements`.
 3. Create the todo list:
    - Resolve requirements
    - Spec expansion
@@ -168,7 +168,7 @@ Provide a completion summary to the user:
 - **Requirements processed**: spec file paths.
 - **Implementation**: files changed (one-liner per file), tests added/modified.
 - **Code review**: finding counts, critical issues fixed.
-- **CI status**: final exit codes for each CI gate.
+- **CI status**: final exit codes for `npm run test`, `npm run lint`, `npm run test:e2e`.
 - **Documentation**: folders updated by scribe, files added/removed from README tables.
 - **Deployment**: live URL.
 - **UI proof**: if any visual/UI change was made, include a browser screenshot of the
@@ -187,7 +187,7 @@ Provide a completion summary to the user:
 | Blocker type | Action |
 |---|---|
 | Spec ambiguity (implementer unsure how to proceed) | Read spec + source, amend spec or re-invoke spec-expander with the specific question. Then restart from Phase 2. |
-| Dependency missing (package, env var, binary) | Install or configure directly via terminal, then re-invoke the blocked agent. |
+| Dependency missing (npm package, env var, browser binary) | Install or configure directly via terminal, then re-invoke the blocked agent. |
 | Conflicting requirements vs `copilot-instructions.md` | The architecture doc wins. Amend the spec to align, note the change, and restart from Phase 2. |
 | Persistent quality-gate failure (retries exhausted) | Report to user: failing test name, assertion, actual vs expected, diagnosis. |
 | Code review finds architectural violation | Fix via implementer before proceeding to quality-gate. |
@@ -202,10 +202,10 @@ Provide a completion summary to the user:
 
 → spec-expander → implementer → code-reviewer → quality-gate → deployer → mentor
 
-**From plan/ROADMAP.md:**
+**From ROADMAP.md:**
 > "Process prepared requirements"
 
-→ Read plan/ROADMAP.md → spec-expander (per group) → implementer → code-reviewer → quality-gate → deployer → mentor
+→ Read ROADMAP → spec-expander (per group) → implementer → code-reviewer → quality-gate → deployer → mentor
 
 **From a spec file:**
 > "Implement the requirements in `specs/improve-the-main-page.md`"

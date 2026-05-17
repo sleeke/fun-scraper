@@ -60,7 +60,7 @@ Parse the user's prompt and select the workflow agent:
 |---|---|
 | "analyse", "analyze", "review", "audit", "health check", "refactor", `scope:`, `focus:` | **refactor** |
 | "release", "deploy to production", "deploy to prod", "changelog", "version bump" | **release-manager** |
-| Requirement text, spec file path, "implement", "build", "add", "create", plan/ROADMAP.md reference, or no trigger words | **feature-delivery** |
+| Requirement text, spec file path, "implement", "build", "add", "create", ROADMAP reference, or no trigger words | **feature-delivery** |
 
 If both analysis and feature triggers are present (e.g. "review and then implement the
 dark-mode toggle"), invoke **refactor** first scoped to the relevant area, then invoke
@@ -101,7 +101,7 @@ You do not retry, fix code, or make architectural decisions. You route and relay
 |---|---|---|
 | "Add rate limiting to the contact API" | feature-delivery | requirement text |
 | "Implement specs/improve-the-main-page.md" | feature-delivery | spec file path |
-| "Process prepared requirements" | feature-delivery | plan/ROADMAP.md reference |
+| "Process prepared requirements" | feature-delivery | ROADMAP reference |
 | "Analyse the codebase" | refactor | scope:project (default) |
 | "Review scope:file target:components/NavBar.tsx" | refactor | scope:file, target:… |
 | "Audit focus:RSC boundaries report-only" | refactor | focus:…, report-only |

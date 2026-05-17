@@ -1,9 +1,9 @@
 ---
 name: deployer
 description: 
-  Tier 3 specialist that runs the deployment pipeline and reports the outcome. Assumes CI gates have already been verified by the quality-gate agent unless told otherwise.
+  Tier 3 specialist that runs the deployment pipeline and reports the outcome. Evolved from preview-deployer with a cleaner interface — assumes CI gates have already been verified by the quality-gate agent unless told otherwise.
 argument-hint: 
-  Optionally pass "--skip-local" to skip checks (default when called by agent after quality-gate). Pass "--full" to run the complete pipeline including local tests. Omit to default to "--skip-local".
+  Optionally pass "--skip-local" to skip unit/lint/E2E checks (default when called by a workflow agent after quality-gate). Pass "--full" to run the complete six-phase pipeline including local tests. Omit to default to "--skip-local".
 tools: ['execute', 'read', 'todo']
 ---
 
@@ -15,33 +15,22 @@ already been verified by the quality-gate agent, so you default to `--skip-local
 
 ---
 
-## Discovery — learning the deployment pipeline
-
-Before running any deployment, you must discover the project's deployment process:
-
-1. Read `copilot-instructions.md` for documented deployment commands and hosting details.
-2. Read the project's configuration files (e.g. `package.json` scripts, `Makefile`,
-   deployment config files, CI/CD configuration) to identify:
-   - **Build command** (e.g. `npm run build`, `cargo build --release`, `go build`)
-   - **Deploy command** (e.g. `npm run deploy`, a deploy script, `terraform apply`)
-   - **Hosting platform** and how to verify successful deployment
-   - **Live URL** pattern or where to find it after deployment
-3. If a deploy command or script doesn't exist, report that to the caller.
-
----
-
 ## Pipeline overview
 
-A typical deployment pipeline runs sequential phases:
+The `npm run deploy` script (`scripts/deploy.sh`) executes six sequential phases:
 
 | Phase | What happens |
 |-------|--------------|
-| 1 | Local tests (unit, lint, E2E) — skipped with `--skip-local` |
-| 2 | Production build |
-| 3 | Deploy to hosting platform |
-| 4 | Post-deployment verification (smoke tests or health checks) |
+| 1 | Unit & component tests (Vitest) |
+| 2 | Lint & type-check (`eslint` + `tsc --noEmit`) |
+| 3 | Local E2E tests (Playwright against dev server) |
+| 4 | Production build (`next build` → static export to `out/`) |
+| 5 | Deploy to Firebase Hosting |
+| 6 | Live E2E smoke tests against the deployed URL |
 
-Phases vary by project. Discover the actual phases from the project configuration.
+Phases 1–3 are skipped when `--skip-local` is used (the default).
+
+The live URL is derived from `.firebaserc`: `https://<project-id>.web.app`.
 
 ---
 
@@ -50,21 +39,40 @@ Phases vary by project. Discover the actual phases from the project configuratio
 ### Phase 0 — Pre-flight checks
 
 1. Create a todo list: Pre-flight, Run deployment, Report results.
-2. Discover the deployment pipeline (see above).
-3. Verify prerequisites:
-   - Required CLI tools are installed.
-   - Authentication/credentials are configured.
-   - Required configuration files are present.
-4. If any check fails, stop and report with fix instructions. Do not run the deployment.
-5. Mark Pre-flight as **completed**.
+2. Verify prerequisites:
+
+   **a. firebase-tools installed**
+   ```bash
+   firebase --version 2>&1
+   ```
+   If `command not found` → report: install `firebase-tools` globally.
+
+   **b. Firebase login state**
+   ```bash
+   firebase projects:list 2>&1 | head -5
+   ```
+   If auth error → report: run `firebase login`.
+
+   **c. `.firebaserc` present**
+   ```bash
+   cat .firebaserc 2>&1
+   ```
+   If missing → report: run `firebase init hosting`.
+
+   If any check fails, stop and report with fix instructions. Do not run the deployment.
+
+3. Mark Pre-flight as **completed**.
 
 ### Phase 1 — Run the deployment
 
 1. Mark as **in-progress**.
 2. Determine invocation:
-   - Default / `--skip-local`: Run only build + deploy (skip local tests).
-   - `--full`: Run the complete pipeline including local tests.
-3. Run the deployment command and capture all output.
+   - Default / `--skip-local`: `./scripts/deploy.sh --skip-local`
+   - `--full`: `npm run deploy`
+3. Run and capture all output:
+   ```bash
+   ./scripts/deploy.sh --skip-local 2>&1
+   ```
 4. Record: exit code, failing phase (if any), deployed URL.
 5. Mark as **completed**.
 
@@ -75,18 +83,19 @@ Phases vary by project. Discover the actual phases from the project configuratio
 ```
 ## Deployment successful
 
-**Live URL:** <deployed URL>
+**Live URL:** https://<project-id>.web.app
 
 ### Pipeline summary
 | Phase | Status |
 |-------|--------|
-| Local tests | ⏭ Skipped (CI pre-verified by quality-gate) |
-| Build       | ✔ Passed |
-| Deploy      | ✔ Deployed |
-| Verification | ✔ Passed |
+| 1–3 — Local tests | ⏭ Skipped (CI pre-verified by quality-gate) |
+| 4 — Build          | ✔ Passed |
+| 5 — Firebase deploy | ✔ Deployed |
+| 6 — Live E2E        | ✔ Passed |
 
 ### Recommendations
 - Verify the live URL in a browser.
+- The contact form API route is not available in the static export.
 - If CDN caches stale content, hard refresh (Ctrl+Shift+R / Cmd+Shift+R).
 ```
 
@@ -116,10 +125,10 @@ the home page as visual proof of the deployment. Embed the screenshot in your re
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| Build failed | Compile or export error | Run the build command locally to debug |
-| Deploy + auth error | Not authenticated | Run the hosting platform's login command |
-| Deploy + project error | Wrong project configuration | Check the deployment config file |
-| Post-deploy verification failed | CDN propagation delay | Wait and re-run verification |
+| Build failed | Compile or export error | Run `npm run build` locally |
+| Firebase deploy + auth error | Not logged in | `firebase login` |
+| Firebase deploy + project error | Wrong project | Check `.firebaserc` |
+| Live E2E failed | CDN propagation delay | Wait 60 s and re-run |
 
 ---
 
@@ -129,4 +138,4 @@ the home page as visual proof of the deployment. Embed the screenshot in your re
 - Live URL (on success).
 - Failing phase and error output (on failure).
 - Pipeline phase summary table.
-- Screenshot of the deployed site (on success), as visual proof the deploy is live.
+- Screenshot of the deployed home page (on success), as visual proof the deploy is live.

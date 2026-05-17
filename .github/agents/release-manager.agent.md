@@ -18,7 +18,7 @@ Your delegates:
 | Agent | Role in this workflow |
 |-------|---------------------|
 | **quality-gate** | Pre-flight CI verification with automatic feedback loop to implementer |
-| **deployer** | Production deployment |
+| **deployer** | Production deployment to Firebase Hosting |
 | **mentor** | Post-release learning extraction |
 
 ---
@@ -70,7 +70,10 @@ Your delegates:
 
 1. Mark as **in-progress**.
 2. If `dry-run` was specified:
-   a. Run only the build step to verify it succeeds.
+   a. Run only the build step to verify it succeeds:
+      ```bash
+      npm run build 2>&1
+      ```
    b. Report: "Dry run complete. Build succeeded. No deployment made."
    c. Skip to Phase 3.
 3. Invoke **deployer** with instruction: "Deploy using `--skip-local` — CI gates were
