@@ -18,7 +18,7 @@ is reached.
 
 ## Guiding principles
 
-1. **Gates are non-negotiable.** All three gates (unit tests, lint, E2E) must pass.
+1. **Gates are non-negotiable.** All gates (unit tests, lint, E2E) must pass.
    Do not report success unless every gate exits 0.
 2. **Automatic recovery.** When a gate fails, invoke the implementer with specific
    failure details. Do not report failure to the caller without first attempting a fix.
@@ -32,35 +32,35 @@ is reached.
 
 ---
 
+## Discovery — learning the project's CI commands
+
+Before running any gates, you must discover the project's test, lint, and E2E commands:
+
+1. Read `copilot-instructions.md` for documented CI commands.
+2. Read the project's configuration files (e.g. `package.json` scripts, `Makefile`,
+   `Cargo.toml`, `pyproject.toml`, etc.) to identify available commands.
+3. Identify:
+   - **Unit test command** (e.g. `npm run test`, `cargo test`, `pytest`, `go test ./...`)
+   - **Lint command** (e.g. `npm run lint`, `cargo clippy`, `flake8`, `golangci-lint run`)
+   - **E2E test command** (e.g. `npm run test:e2e`, `playwright test`, `cypress run`)
+4. If a command category doesn't exist for the project, skip that gate and note it.
+
+---
+
 ## Execution workflow
 
 ### Phase 0 — Pre-flight
 
 1. Create a todo list with items for each gate: Unit tests, Lint, E2E tests, Final
    verification.
-2. Ensure the dev server is running (needed for E2E):
-   ```bash
-   curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
-   ```
-   If not `200`:
-   ```bash
-   npm run dev &
-   sleep 8
-   curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
-   ```
-3. Ensure Playwright browsers are installed. If every E2E test fails with
-   `Executable doesn't exist`, run:
-   ```bash
-   node_modules/.bin/playwright install
-   ```
+2. Discover the CI commands (see above).
+3. If E2E tests require a running server, ensure it is started before running E2E gates.
+4. If E2E tests require browser binaries, ensure they are installed.
 
 ### Phase 1 — Unit & component tests
 
 1. Mark as **in-progress**.
-2. Run:
-   ```bash
-   npm run test -- --reporter=verbose 2>&1
-   ```
+2. Run the unit test command.
 3. If exit code is 0 → mark as **completed**, proceed to Phase 2.
 4. If exit code is non-zero → enter the **fix loop**:
 
@@ -75,7 +75,7 @@ is reached.
       - Instruction: "Fix the source code to make these tests pass. Do not modify
         test files unless they demonstrably contradict documented requirements.
         Run unit tests after fixing to verify."
-   c. Re-run `npm run test -- --reporter=verbose 2>&1`.
+   c. Re-run the unit test command.
    d. If green → break loop, mark as **completed**.
    e. If still failing → increment retry counter, repeat from (a).
    f. If retry limit reached → mark as **failed**, record full output for the caller.
@@ -83,10 +83,7 @@ is reached.
 ### Phase 2 — Lint & type checks
 
 1. Mark as **in-progress**.
-2. Run:
-   ```bash
-   npm run lint 2>&1
-   ```
+2. Run the lint command.
 3. If exit code is 0 → mark as **completed**, proceed to Phase 3.
 4. If exit code is non-zero → enter the **fix loop**:
 
@@ -94,20 +91,19 @@ is reached.
    a. Parse lint output for error locations and rule IDs.
    b. Invoke **implementer** with:
       - The lint errors (file, line, rule, message).
-      - Instruction: "Fix these lint and type errors. Do not suppress rules with
-        `eslint-disable` unless the rule is a confirmed false-positive."
-   c. Re-run `npm run lint 2>&1`.
+      - Instruction: "Fix these lint and type errors. Do not suppress rules
+        unless the rule is a confirmed false-positive."
+   c. Re-run the lint command.
    d. If green → break loop, mark as **completed**.
    e. If still failing → increment retry counter, repeat from (a).
    f. If retry limit reached → mark as **failed**, record full output.
 
 ### Phase 3 — E2E tests
 
+_Skip if the project does not have E2E tests._
+
 1. Mark as **in-progress**.
-2. Run:
-   ```bash
-   npm run test:e2e 2>&1
-   ```
+2. Run the E2E test command.
 3. If exit code is 0 → mark as **completed**, proceed to Phase 4.
 4. If exit code is non-zero → enter the **fix loop**:
 
@@ -121,27 +117,15 @@ is reached.
       - The error output (trimmed to relevant lines).
       - Instruction: "Fix the source code to make these E2E tests pass.
         Read the spec file first to understand the user flow being tested."
-   c. Re-run only the affected spec to verify:
-      ```bash
-      node_modules/.bin/playwright test e2e/<spec-file>.spec.ts 2>&1
-      ```
-   d. If the targeted spec passes, re-run the full suite:
-      ```bash
-      npm run test:e2e 2>&1
-      ```
-   e. If green → break loop, mark as **completed**.
-   f. If still failing → increment retry counter, repeat from (a).
-   g. If retry limit reached → mark as **failed**, record full output.
+   c. Re-run the E2E tests.
+   d. If green → break loop, mark as **completed**.
+   e. If still failing → increment retry counter, repeat from (a).
+   f. If retry limit reached → mark as **failed**, record full output.
 
 ### Phase 4 — Final verification
 
-Run the complete suite in one pass to confirm all gates are green simultaneously:
-
-```bash
-npm run test 2>&1 && npm run lint 2>&1 && npm run test:e2e 2>&1
-```
-
-Only report success after this command exits 0.
+Run all gates in one pass to confirm they are green simultaneously. Only report success
+after all commands exit 0.
 
 ---
 
@@ -149,16 +133,13 @@ Only report success after this command exits 0.
 
 | Symptom | Likely cause | Guidance for implementer |
 |---|---|---|
-| Component test: "cannot find element" | Component HTML changed | Fix `components/<Name>.tsx` |
-| Type error in test file | Component prop types changed | Fix `components/<Name>.tsx` or `lib/types.ts` |
-| Test fails on CSS class assertion | Token/class rename | Fix `app/globals.css` or component file |
-| E2E: navigation / 404 | Route or slug mismatch | Fix `app/` route files or `lib/content.ts` |
-| E2E: visible text mismatch | Page copy changed | Fix relevant `app/**/page.tsx` |
-| ContactForm test fails | API route or form handler changed | Fix `app/api/contact/route.ts` or `components/ContactForm.tsx` |
-| All E2E fail: `Executable doesn't exist` | Playwright browsers not installed | Run `node_modules/.bin/playwright install` (pre-flight issue) |
-| All E2E fail: `ERR_CONNECTION_REFUSED` | Dev server not running | Start `npm run dev &` then `sleep 8` |
-| E2E: `strict mode violation: N elements` | Ambiguous Playwright selector | Add `exact: true` or scope the locator |
-| E2E: nav link not found on mobile | Link inside hamburger drawer | Open drawer first: `page.getByRole('button', { name: /open menu/i }).click()` |
+| Test: "cannot find element" | Component/view structure changed | Fix the relevant source file |
+| Type error in test file | Interface/prop types changed | Fix the type definitions |
+| Test fails on class/style assertion | Token/class rename | Fix the stylesheet or component |
+| E2E: navigation / 404 | Route or slug mismatch | Fix route configuration or content |
+| E2E: visible text mismatch | Page copy changed | Fix the relevant page/template |
+| All E2E fail: browser not found | Browser binaries not installed | Install via the test framework's CLI |
+| All E2E fail: connection refused | Dev server not running | Start the dev server first |
 
 ---
 

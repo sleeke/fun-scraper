@@ -22,7 +22,7 @@ Your delegates:
 | **code-reviewer** | Detailed code review (scope-based) |
 | **implementer** | Applies fixes from triaged findings |
 | **quality-gate** | Full CI verification with feedback loop |
-| **deployer** | Firebase preview deployment |
+| **deployer** | Deployment to hosting platform |
 | **scribe** | Updates per-folder README documentation for changed files |
 | **mentor** | Post-workflow learning extraction |
 
@@ -190,12 +190,12 @@ _Skip if report-only / audit-only mode._
 1. Mark as **in-progress**.
 2. Invoke **deployer** with:
    - Instruction: "Deploy using `--skip-local` — CI gates were verified. Report the
-     live URL."
+     deployment artefact."
 3. If deploy fails:
    a. Recoverable infra issue — fix directly and re-invoke deployer.
    b. Build/test regression — invoke quality-gate to diagnose, then loop.
    c. Cap deploy retries at **2**.
-4. Record the live URL.
+4. Record the deployment artefact reference.
 5. Mark as **completed**.
 
 ### Phase 9 — Learning
@@ -203,8 +203,8 @@ _Skip if report-only / audit-only mode._
 1. Mark as **in-progress**.
 2. Invoke **mentor** with:
    - Instruction: "Analyse this analysis & remediation session. Extract lessons for
-     all agents that participated. Operate in apply mode — edit agent instruction
-     files directly with any improvements discovered."
+     all agents that participated. Operate in report mode — produce a suggestions
+     report only. Do not edit any agent instruction files."
 3. Mark as **completed**.
 
 ### Phase 10 — Handoff
@@ -216,7 +216,7 @@ Provide a completion summary:
 - **Verification**: remaining issues after review, review cycles used.
 - **CI status**: final exit codes for all gates (or "skipped" if report-only).
 - **Documentation**: folders updated by scribe, README changes (or "skipped" if report-only).
-- **Deployment**: live URL (or "skipped" if report-only).
+- **Deployment**: deployment artefact (or "skipped" if report-only).
 - **Learning**: improvements applied to agent instructions (from mentor).
 - **Blockers encountered**: issues and how they were resolved.
 
@@ -226,13 +226,13 @@ Provide a completion summary:
 
 | Pattern | Approach |
 |---------|----------|
-| RSC boundary violation | Move client logic to a `"use client"` component; keep parent as RSC. |
-| Missing tests for component | Include test creation in the fix-list for implementer. |
-| Hardcoded content (should be MDX) | Create MDX file in `content/`, update `lib/content.ts` helper. |
-| Design token bypass | Replace one-off values with tokens from `globals.css` `@theme` block. |
+| Framework convention violation | Restructure code to follow the framework's conventions as documented in `copilot-instructions.md`. |
+| Missing tests for module | Include test creation in the fix-list for implementer. |
+| Hardcoded content (should be externalised) | Move data to the appropriate content/data source, update access helpers. |
+| Styling convention bypass | Replace one-off values with tokens/variables from the project's design system. |
 | Accessibility gaps | Add ARIA attributes, keyboard handlers, semantic HTML in fix-list. |
-| Performance (missing next/image) | Replace `<img>` with `next/image` in fix-list. |
-| Duplicate code | Extract shared utility to `lib/` or shared component to `components/`. |
+| Performance issues | Apply framework-specific optimisations (e.g. image optimisation, lazy loading). |
+| Duplicate code | Extract shared utility or shared component. |
 | Stale dependencies | Flag for user decision; do not auto-upgrade without approval. |
 
 ---
