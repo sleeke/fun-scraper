@@ -38,6 +38,7 @@ backend/
       scrape.js          POST /api/scrape, GET /api/scrape/sources
     scrapers/
       base.js            Shared utilities: detectGenre, lookupArtistGenres
+      generic.js         Generic URL scraper for user-submitted events
       index.js           Registry — maps source key → scraper module
       blueprint.js       Blueprint venue scraper
       celebrities.js     Celebrities venue scraper
@@ -66,6 +67,7 @@ backend/
 | DELETE | `/api/events/:id` | Delete an event |
 | POST | `/api/scrape` | Trigger a scrape `{ source, url? }` |
 | GET | `/api/scrape/sources` | List available scraper keys + default URLs |
+| POST | `/api/scrape/preview` | Preview a user-submitted URL `{ url }` — scrapes but does not persist |
 | POST | `/api/events/:id/participants` | Add a participant |
 | DELETE | `/api/events/:id/participants` | Remove a participant |
 

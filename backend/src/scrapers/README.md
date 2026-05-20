@@ -12,7 +12,8 @@ the rest of the application can store and display.
 2. [Shared utilities — `base.js`](#2-shared-utilities--basejs)
 3. [Headless-browser helper — `browser.js`](#3-headless-browser-helper--browserjs)
 4. [Scraper registry — `index.js`](#4-scraper-registry--indexjs)
-5. [Individual scrapers](#5-individual-scrapers)
+5. [Generic URL scraper — `generic.js`](#5-generic-url-scraper--genericjs)
+6. [Individual scrapers](#6-individual-scrapers)
    - [blueprint.js — Blueprint Events Vancouver](#blueprintjs--blueprint-events-vancouver)
    - [ticketmaster.js — Ticketmaster](#ticketmasterjs--ticketmaster)
    - [celebrities.js — Celebrities Night Club](#celebritiesjs--celebrities-night-club)
@@ -21,9 +22,9 @@ the rest of the application can store and display.
    - [industrial236.js — Industrial 236](#industrial236js--industrial-236)
    - [thisisblueprint.js — This Is Blueprint](#thisisblueprintjs--this-is-blueprint)
    - [residentadvisor.js — Resident Advisor](#residentadvisorjs--resident-advisor)
-6. [Comparison table](#6-comparison-table)
-7. [Common problems and access restrictions](#7-common-problems-and-access-restrictions)
-8. [Suggested improvements](#8-suggested-improvements)
+7. [Comparison table](#7-comparison-table)
+8. [Common problems and access restrictions](#8-common-problems-and-access-restrictions)
+9. [Suggested improvements](#9-suggested-improvements)
 
 ---
 
@@ -194,7 +195,7 @@ to this registry.
 
 ---
 
-## 5. Individual scrapers
+## 6. Individual scrapers
 
 ---
 
@@ -429,6 +430,40 @@ contain well-known non-Vancouver city names.
 
 ---
 
+## 5. Generic URL scraper — `generic.js`
+
+Unlike the venue-specific scrapers, `generic.js` is not registered in `index.js` and
+is never invoked by `POST /api/scrape`.  It exists solely to support the
+**user event submission** workflow via `POST /api/scrape/preview`.
+
+When a user pastes any URL into the Submit Event form, the preview endpoint first
+checks whether the URL's hostname matches a known scraper (e.g. ticketmaster.com).
+If it does, that scraper is used for richer extraction.  If no match is found, the
+generic scraper runs instead.
+
+### Extraction strategy
+
+The generic scraper applies three passes in priority order — each pass fills in fields
+that the previous passes left empty:
+
+1. **JSON-LD** — scans `<script type="application/ld+json">` blocks for an object
+   whose `@type` is `Event` or `MusicEvent`.  When found, schema.org fields are mapped
+   directly to the event object (`name → title`, `location.name → venue`,
+   `startDate → date + time`, `performer.name → artist`, etc.).
+
+2. **Open Graph** — fills remaining gaps from `og:title`, `og:description`, and
+   `og:image` meta tags.  Most event pages include these for social sharing previews.
+
+3. **HTML heuristics** — uses the page's `<h1>` as a title fallback, looks for
+   elements with `datetime` or `data-date` attributes to find a date, and picks the
+   first reasonably-sized `<img>` as an image fallback.
+
+The extracted event always has `source = 'user_submitted'` and
+`source_id = url.slice(0, 500)`.  Fields the scraper cannot determine are left `null`
+so the user can fill them in manually in the preview form.
+
+---
+
 ## 6. Comparison table
 
 | Scraper | Target site | Data method | API key needed? | JS-rendering risk | Fallback strategy |
@@ -441,6 +476,7 @@ contain well-known non-Vancouver city names.
 | `industrial236` | industrial236.com | HTML scraping | No | Medium | Collect `/event` and `/show` links |
 | `thisisblueprint` | thisisblueprint.com | HTML scraping | No | Medium | Collect `/event` links |
 | `residentadvisor` | ra.co | GraphQL API + browser | No | **High** | 4-strategy cascade |
+| `generic` | Any URL (user-submitted) | JSON-LD → OG → heuristics | No | Low | Best-effort partial result |
 
 **JS-rendering risk** refers to how likely it is that the event data is loaded
 dynamically via JavaScript rather than being present in the initial HTML response.

@@ -3,11 +3,12 @@ import { api } from './api';
 import EventCard from './components/EventCard';
 import EventDetail from './components/EventDetail';
 import ScrapePanel from './components/ScrapePanel';
+import SubmitEventForm from './components/SubmitEventForm';
 import Toast from './components/Toast';
 import { useToast } from './hooks/useToast';
 
 const GENRES = ['', 'electronic', 'hip-hop', 'rock', 'jazz', 'pop', 'classical', 'country', 'reggae', 'latin'];
-const SOURCES = ['', 'blueprint', 'ticketmaster', 'celebrities', 'redroom', 'fortune', 'industrial236', 'residentadvisor'];
+const SOURCES = ['', 'blueprint', 'ticketmaster', 'celebrities', 'redroom', 'fortune', 'industrial236', 'residentadvisor', 'user_submitted'];
 const SOURCE_LABELS = {
   '': 'All Sources',
   blueprint: 'Blueprint',
@@ -17,6 +18,7 @@ const SOURCE_LABELS = {
   fortune: 'Fortune Sound',
   industrial236: 'Industrial 236',
   residentadvisor: 'Resident Advisor',
+  user_submitted: 'User Submitted',
 };
 const GENRE_LABELS = { '': 'All Genres', electronic: 'Electronic', 'hip-hop': 'Hip-Hop', rock: 'Rock', jazz: 'Jazz', pop: 'Pop', classical: 'Classical', country: 'Country', reggae: 'Reggae', latin: 'Latin' };
 const PAGE_SIZE = 20;
@@ -189,6 +191,7 @@ export default function App() {
 
       <main className="main-content">
         <ScrapePanel onScraped={() => fetchEvents({ page: 1 })} toast={addToast} />
+        <SubmitEventForm onSubmitted={() => fetchEvents({ page: 1 })} toast={addToast} />
 
         {/* Search / Filter Bar */}
         <div className="search-bar">

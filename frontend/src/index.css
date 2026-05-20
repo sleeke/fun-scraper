@@ -398,6 +398,88 @@ a:hover { text-decoration: underline; }
   color: var(--text-muted);
 }
 
+/* ===== Submit Event Form ===== */
+.submit-panel-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+}
+.submit-panel-toggle h3 {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+.submit-panel-toggle:hover h3 { color: var(--text); }
+.submit-panel-toggle svg { color: var(--text-muted); flex-shrink: 0; }
+.submit-panel-body { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+.submit-url-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.submit-url-input {
+  flex: 1;
+  min-width: 200px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+.submit-url-input:focus { outline: none; border-color: var(--accent); }
+
+.submit-error { color: #ff6b6b; font-size: 0.85rem; margin: 0; }
+
+.submit-preview-form { display: flex; flex-direction: column; gap: 10px; }
+.submit-preview-hint { font-size: 0.82rem; color: var(--text-muted); }
+
+.submit-field { display: flex; flex-direction: column; gap: 4px; }
+.submit-field label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.submit-required { color: var(--accent); }
+.submit-field input,
+.submit-field select,
+.submit-field textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-family: inherit;
+  width: 100%;
+}
+.submit-field input:focus,
+.submit-field select:focus,
+.submit-field textarea:focus { outline: none; border-color: var(--accent); }
+.submit-field textarea { resize: vertical; }
+.submit-field-error { font-size: 0.8rem; color: var(--accent); }
+
+.submit-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 600px) {
+  .submit-field-grid { grid-template-columns: 1fr; }
+}
+
+.submit-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+
 /* ===== Empty / Loading States ===== */
 .empty-state {
   text-align: center;

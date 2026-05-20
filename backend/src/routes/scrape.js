@@ -1,9 +1,30 @@
 const express = require('express');
 const router = express.Router();
 const SCRAPERS = require('../scrapers');
+const genericScraper = require('../scrapers/generic');
 const { getDb } = require('../db/schema');
 const { lookupArtistGenres, detectGenre } = require('../scrapers/base');
 const { saveEventsToBlob, prunePastEvents } = require('../db/blobSync');
+
+/**
+ * Build a map of hostname → registered scraper for URL-based routing in the
+ * preview endpoint. Constructed once at module load time.
+ */
+function buildHostnameMap() {
+  const map = new Map();
+  for (const [key, scraper] of Object.entries(SCRAPERS)) {
+    if (!scraper.DEFAULT_URL) continue;
+    try {
+      const hostname = new URL(scraper.DEFAULT_URL).hostname;
+      map.set(hostname, { key, scraper });
+    } catch {
+      // Malformed DEFAULT_URL — skip
+    }
+  }
+  return map;
+}
+
+const SCRAPER_HOSTNAME_MAP = buildHostnameMap();
 
 /**
  * Enrich events with MusicBrainz genres for artists that don't yet have
@@ -189,6 +210,81 @@ router.get('/sources', (_req, res) => {
     defaultUrl: scraper.DEFAULT_URL,
   }));
   res.json(sources);
+});
+
+/**
+ * POST /api/scrape/preview
+ * Body: { url: string }
+ *
+ * Scrapes the given URL and returns a best-effort event object for the user
+ * to review. Does NOT persist anything to the database.
+ *
+ * If the URL's hostname matches a registered scraper's DEFAULT_URL, that
+ * scraper is used instead of the generic extractor so richer data is returned.
+ * The source is always overridden to 'user_submitted' in the response.
+ */
+router.post('/preview', async (req, res) => {
+  const { url } = req.body;
+
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return res.status(400).json({ error: 'url is required' });
+  }
+
+  const trimmed = url.trim();
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return res.status(400).json({ error: 'url must be http or https' });
+  }
+
+  let hostname;
+  try {
+    hostname = new URL(trimmed).hostname;
+  } catch {
+    return res.status(400).json({ error: 'Invalid URL format' });
+  }
+
+  // SSRF protection: reject requests to localhost, loopback, and private IP ranges.
+  // These could allow the server to probe its own internal network.
+  const blockedHostnames = ['localhost', '127.0.0.1', '::1', '0.0.0.0'];
+  if (
+    blockedHostnames.includes(hostname.toLowerCase()) ||
+    /^10\./.test(hostname) ||
+    /^172\.(1[6-9]|2[0-9]|3[01])\./.test(hostname) ||
+    /^192\.168\./.test(hostname) ||
+    hostname === '169.254.169.254'
+  ) {
+    return res.status(400).json({ error: 'URL points to a disallowed host' });
+  }
+
+  try {
+    let events;
+    const matched = SCRAPER_HOSTNAME_MAP.get(hostname);
+    if (matched) {
+      console.log(`[preview] URL matches known scraper: ${matched.key}`);
+      events = await matched.scraper.scrape(trimmed);
+      // Override source so the user's submission is tracked correctly
+      events = events.map((ev) => ({
+        ...ev,
+        source: 'user_submitted',
+        source_id: trimmed.slice(0, 500),
+      }));
+    } else {
+      events = await genericScraper.scrape(trimmed);
+    }
+
+    const event = events[0] || {
+      source: 'user_submitted',
+      source_id: trimmed.slice(0, 500),
+      title: null,
+      venue: null,
+      city: 'Vancouver',
+    };
+
+    res.json(event);
+  } catch (err) {
+    console.error(`[preview] Failed to scrape ${trimmed}:`, err.message);
+    res.status(422).json({ error: describeError(err) });
+  }
 });
 
 module.exports = router;

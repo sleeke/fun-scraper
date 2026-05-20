@@ -23,14 +23,9 @@
 
 ### Medium Priority
 
-#### Event submission
-
-- People should be able to submit events through a form on the site. This would allow users to contribute events that may not be easily scraped, and it would also provide an alternative method for adding events to the database.
-- A user should be able to filter events by those submitted by users vs those scraped from the web.
-
-#### Auto scroll
-
-- Implement auto-scrolling on the frontend to allow users to easily browse through events without having to click through pagination. This would enhance the user experience and make it more seamless to discover events.
+#### Links to artist
+- If the event details include the names of artists performing at the event, the site could automatically generate links to the artists' pages on platforms like Spotify, YouTube, or Wikipedia. This would allow users to easily learn more about the artists and their music.
+- If the original page provides links to the artists music, those should be scraped and prioritized over the generated ones, as they are more likely to be relevant to the event.
 
 #### Formatting of UI
 
@@ -38,6 +33,9 @@
 - Icons should be cleaner, perhaps using material design icons or similar, with a monochrome appearance themed to the color pallette of the site.
 
 ### Low priority
+
+#### Separation by day/week
+- The site could have a calendar view that allows users to see events organized by day or week. This would make it easier for users to find events happening on specific dates and plan their attendance accordingly.
 
 #### Color themes
 
@@ -49,8 +47,11 @@
 
 ## Prepared requirements
 
-### ✅ Add storage so that previous results are stored and retrieved (DONE)
+#### Event submission
 
-Events are now persisted to Vercel Blob (`events/all.json`) after each scrape and restored into SQLite on cold starts. Uses `@vercel/blob` SDK. Requires `BLOB_READ_WRITE_TOKEN` env var (set on Vercel; loaded from `.env.local` locally).
+- People should be able to submit events through a form on the site. This would allow users to contribute events that may not be easily scraped, and it would also provide an alternative method for adding events to the database.
+- A user should be able to filter events by those submitted by users vs those scraped from the web.
+- events should be added using a URL, which would be scraped for details. This would allow users to easily add events by simply providing a link to the event page.
+- Once scraped, the form should output a preview of the event details, allowing the user to confirm that the information is correct and edit it before submitting it to the database. 
 
 ## Planning-ready requirements

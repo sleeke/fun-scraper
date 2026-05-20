@@ -470,3 +470,107 @@ describe('POST /api/events/:id/analyze', () => {
     expect(Object.prototype.hasOwnProperty.call(res.body, 'analyzed_at')).toBe(true);
   });
 });
+
+describe('POST /api/scrape/preview — URL validation', () => {
+  test('returns 400 when url is missing', async () => {
+    const res = await request(app).post('/api/scrape/preview').send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBeTruthy();
+  });
+
+  test('returns 400 when url is an empty string', async () => {
+    const res = await request(app).post('/api/scrape/preview').send({ url: '' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBeTruthy();
+  });
+
+  test('returns 400 when url is whitespace only', async () => {
+    const res = await request(app).post('/api/scrape/preview').send({ url: '   ' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBeTruthy();
+  });
+
+  test('returns 400 when url uses ftp scheme', async () => {
+    const res = await request(app)
+      .post('/api/scrape/preview')
+      .send({ url: 'ftp://example.com/event' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/http/i);
+  });
+
+  test('returns 400 when url uses javascript: scheme', async () => {
+    const res = await request(app)
+      .post('/api/scrape/preview')
+      .send({ url: 'javascript:alert(1)' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/http/i);
+  });
+
+  test('returns 400 for a completely invalid URL string', async () => {
+    const res = await request(app)
+      .post('/api/scrape/preview')
+      .send({ url: 'http://not a valid url with spaces' });
+    // new URL() throws on spaces — the route must return 400 (invalid format)
+    expect(res.status).toBe(400);
+  });
+
+  test('returns 400 for localhost (SSRF protection)', async () => {
+    const res = await request(app)
+      .post('/api/scrape/preview')
+      .send({ url: 'http://localhost/admin' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/disallowed/i);
+  });
+
+  test('returns 400 for 127.0.0.1 (SSRF protection)', async () => {
+    const res = await request(app)
+      .post('/api/scrape/preview')
+      .send({ url: 'http://127.0.0.1:3000/internal' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/disallowed/i);
+  });
+});
+
+describe('User-submitted events', () => {
+  let submittedId;
+
+  test('POST /api/events with source=user_submitted creates event with correct source', async () => {
+    const res = await request(app).post('/api/events').send({
+      title: 'User Submitted Concert',
+      venue: 'My Venue',
+      source: 'user_submitted',
+      source_id: 'https://example.com/event/user-submit-1',
+      date: '2099-12-31',
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.source).toBe('user_submitted');
+    submittedId = res.body.id;
+  });
+
+  test('GET /api/events?source=user_submitted returns only user-submitted events', async () => {
+    const res = await request(app).get('/api/events?source=user_submitted');
+    expect(res.status).toBe(200);
+    expect(res.body.events.length).toBeGreaterThan(0);
+    for (const ev of res.body.events) {
+      expect(ev.source).toBe('user_submitted');
+    }
+    expect(res.body.events.some((e) => e.id === submittedId)).toBe(true);
+  });
+
+  test('GET /api/events?source=user_submitted does not return scraped events', async () => {
+    // Create an event from a scraped source
+    await request(app).post('/api/events').send({
+      title: 'Scraped Event',
+      venue: 'Scraped Venue',
+      source: 'blueprint',
+      source_id: 'scraped-check-1',
+      date: '2099-12-30',
+    });
+
+    const res = await request(app).get('/api/events?source=user_submitted');
+    expect(res.status).toBe(200);
+    for (const ev of res.body.events) {
+      expect(ev.source).toBe('user_submitted');
+    }
+  });
+});
