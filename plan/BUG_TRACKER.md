@@ -9,11 +9,7 @@ Please ignore bugs in this section until the remaining information has been fill
 
 ## Prepared bugs
 
-### Manual event submission
-
-There are some issues with the manual event submission:
-1. Submitting a URL which contains clear date and location information (e.g. https://thisisblueprint.com/events/foundation-v13-5-disclosure-pne-forum-2026-04-18) doesn't result in those details being extracted and populated in the event.
-2. Submitting a PDF doesn't seem to create an event at all. An error is displayed: "No events could be identified in this document. Try using the form to enter event details manually."
+(none)
 
 ## Active Bugs
 
